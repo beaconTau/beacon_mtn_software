@@ -576,7 +576,7 @@ int nuphase_acq_config_write(const char * fi, const nuphase_acq_cfg_t * c)
   fprintf(f,"  attenuation =  {"); 
   for (i = 0; i < NP_NUM_CHAN; i++)
     fprintf(f,  "ch%d: %d;  " , i, c->attenuation[i]); 
-  fprintf(f,"} ) ;\n\n"); 
+  fprintf(f,"} ;\n\n"); 
 
   fprintf(f,"  //which channels to digitize\n"); 
   fprintf(f,"  channel_read_mask = 0x%x; \n\n", c->channel_read_mask); 
