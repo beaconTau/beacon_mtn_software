@@ -162,7 +162,7 @@ int main(int nargs, char ** args)
 
   while (!stop) 
   {
-    nuphase_hk(the_hk, cfg.asps_method) ; 
+    nuphase_hk(the_hk) ; 
 
     time_t now = time(0); 
 

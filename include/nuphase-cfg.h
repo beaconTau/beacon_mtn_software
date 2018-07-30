@@ -26,7 +26,7 @@ typedef struct nuphase_acq_cfg
   /* the names of the spi devices
    * 0 should be master, 1 should be slave/ 
    * */ 
-  const char * spi_devices[NP_MAX_BOARDS]; 
+  const char * spi_device; 
 
   /* the name of the file holding the desired run number*/ 
   const char * run_file; 
@@ -45,13 +45,13 @@ typedef struct nuphase_acq_cfg
   double scaler_goal[NP_NUM_BEAMS]; 
 
   // trigger mask
-  uint16_t trigger_mask; 
+  uint32_t trigger_mask; 
 
   // channel mask
   uint8_t channel_mask; 
 
   //channel read_mask
-  uint8_t channel_read_mask[2]; 
+  uint8_t channel_read_mask; 
 
   // pid goal constats;
   double k_p,k_i, k_d; 
@@ -106,7 +106,7 @@ typedef struct nuphase_acq_cfg
   // Use this to apply the attenuations instead of just
   // using whatever is on the board. 
   int apply_attenuations; 
-  uint8_t attenuation [NP_MAX_BOARDS][NP_NUM_CHAN]; 
+  uint8_t attenuation[NP_NUM_CHAN]; 
 
 
   // Program called to check alignment / align the cal pulser 
@@ -172,16 +172,10 @@ int nuphase_copy_config_write(const char * file, const nuphase_copy_cfg_t * );
 
 typedef struct nuphase_start_cfg
 {
-  int min_temperature; 
-  nuphase_asps_method_t asps_method; 
-  int heater_current; 
-  int poll_interval; 
-  int nchecks;
   const char * set_attenuation_cmd; 
   const char * reconfigure_fpga_cmd; 
   const char * out_dir; //output directory for hk data 
-  double desired_rms_master; 
-  double desired_rms_slave; 
+  double desired_rms; 
 }nuphase_start_cfg_t; 
 
 
@@ -196,7 +190,6 @@ typedef struct nuphase_hkd_cfg
   const char * out_dir; //output directory for hk data 
   int max_secs_per_file; // maximum number of seconds per file. Default 600
   const char * shm_name; //shared memory name
-  nuphase_asps_method_t asps_method;  //asps output method 
   int print_to_screen; //1 to print to screen 
 
 } nuphase_hk_cfg_t;

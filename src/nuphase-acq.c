@@ -759,7 +759,7 @@ static int configure_device()
 
   if (config.apply_attenuations)
   {
-    nuphase_set_attenuation(device, config.attenuation[0], config.attenuation[1]); 
+    nuphase_set_attenuation(device, config.attenuation, 0); 
   }
 
   nuphase_set_trigger_mask(device, config.trigger_mask); 
@@ -816,7 +816,7 @@ static int setup()
     {
       fprintf(stderr,"Alignment not successful. Trying a reset.\n"); 
       //try to do a restart and try again
-      nuphase_reboot_fpga_power(1,0,20); 
+      nuphase_reboot_fpga_power(1,20); 
 
       if (start_config.reconfigure_fpga_cmd)
       {
@@ -829,7 +829,7 @@ static int setup()
       if (success && !config.apply_attenuations)
       {
         char cmd[1024]; 
-        sprintf(cmd,"%s %g %g", start_config.set_attenuation_cmd, start_config.desired_rms_master, start_config.desired_rms_slave); 
+        sprintf(cmd,"%s %g", start_config.set_attenuation_cmd, start_config.desired_rms); 
         system(cmd); 
       }
     }
@@ -839,7 +839,7 @@ static int setup()
 
   //open the devices and configure properly
   // the gpio state should already have been set 
-  device = nuphase_open(config.spi_devices[0], config.spi_devices[1], 0, 1); 
+  device = nuphase_open(config.spi_device, 0, 0, 1); 
 
 
   if (!device)

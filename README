@@ -1,4 +1,4 @@
-This is the software that runs the NuPhase station. 
+This is the software that runs the BEACON station. 
 It depends on libnuphase for talking to the boards. 
 
 It consists of several programs: 
@@ -6,7 +6,7 @@ It consists of several programs:
 nuphase-acq:   Data Acquisition (nuphase-acq.c)
 nuphase-copy:  Data copying to RadProc    (nuphase-copy.c)
 nuphase-hk:   Housekeeping  / power control daemon     (nuphase-hk.c)
-nuphase-startup: Startup process that waits for the right temperature ( nuphase-startup.c) 
+nuphase-startup: Startup process that does basically nothing in beacon. (nuphase-startup.c) 
 
 
 
