@@ -155,9 +155,10 @@ int nuphase_acq_config_write(const char * file, const nuphase_acq_cfg_t * );
 typedef struct nuphase_copy_cfg
 {
   const char * remote_hostname; 
+  int port; //ssh port for the remote
   const char * remote_path; 
   const char * remote_user; 
-  const char * local_path; 
+  const char * local_path;
   int free_space_delete_threshold; //MB 
   int delete_files_older_than;  //days
   int wakeup_interval; //seconds
