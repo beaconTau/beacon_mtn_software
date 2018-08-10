@@ -2,7 +2,8 @@
 #include <string.h> 
 
 #include "nuphase-cfg.h" 
-#include "nuphase.h" 
+#include "nuphase.h"
+
 
 /** Config file parsing uses libconfig. Not sure if it's the most efficient
  * option, but writing our own parser is a big hassle.
@@ -291,7 +292,7 @@ void nuphase_acq_config_init ( nuphase_acq_cfg_t * c)
   c->spi_clock = 20; 
   c->waveform_length = 512; 
   c->enable_phased_trigger = 1;
-  c->trigger_polarization = 0;
+  c->trigger_polarization = H;
   c->calpulser_state = 0; 
 
 
@@ -325,6 +326,30 @@ void nuphase_acq_config_init ( nuphase_acq_cfg_t * c)
   c->copy_paths_to_rundir = "/home/nuphase/nuphase-python/output:/proc/loadavg"; 
   c->copy_configs = 1; 
   memset(c->trig_delays,0,sizeof(c->trig_delays)); 
+}
+
+
+static const char* nuphase_trigger_polarization_strings[] = {"H", "V"};
+
+void config_lookup_pol(config_t* cfg, const char* key, nuphase_trigger_polarization_t* pol){
+
+  const char* str;
+  if(config_lookup_string(cfg, key, &str)){
+
+    int foundMatch = 0;
+    for(int i=0; i < 2; i++){
+      if(strcmp(str, nuphase_trigger_polarization_strings[i])==0){
+	*pol = i;
+	foundMatch = 1;
+	break;
+      }
+    }
+    if(foundMatch==0){
+      fprintf(stderr, "Warning in %s: Got unexpected pol config: %s\n", __PRETTY_FUNCTION__, key);
+      fprintf(stderr, "Setting trigger polarization to H (default)\n");
+      pol = H;
+    }
+  }
 }
 
 int nuphase_acq_config_read(const char * fi, nuphase_acq_cfg_t * c) 
@@ -364,7 +389,7 @@ int nuphase_acq_config_read(const char * fi, nuphase_acq_cfg_t * c)
   config_lookup_float(&cfg,"control.monitor_interval",&c->monitor_interval); 
   config_lookup_float(&cfg,"control.sw_trigger_interval",&c->sw_trigger_interval); 
   config_lookup_int(&cfg,"control.enable_phased_trigger",&c->enable_phased_trigger); 
-  config_lookup_int(&cfg,"control.trigger_polarization",&c->trigger_polarization);
+  config_lookup_pol(&cfg,"control.trigger_polarization",&c->trigger_polarization);  
   config_lookup_int(&cfg,"control.secs_before_phased_trigger",&c->secs_before_phased_trigger); 
   config_lookup_float(&cfg,"control.fast_scaler_weight",&c->fast_scaler_weight); 
   config_lookup_float(&cfg,"control.slow_scaler_weight",&c->slow_scaler_weight); 
@@ -515,8 +540,12 @@ int nuphase_acq_config_write(const char * fi, const nuphase_acq_cfg_t * c)
   fprintf(f,"   //enable the phased trigger readout\n"); 
   fprintf(f,"   enable_phased_trigger = %d;\n\n",c->enable_phased_trigger); 
 
-  fprintf(f, "//Which polarization to trigger on, 0=H, 1=V, higher values reserved for as-yet unimplemented combinations\n");
-  fprintf(f, "trigger_polarization = %d\n\n", c->trigger_polarization);
+  /* fprintf(f, "//Which polarization to trigger on, 0=H, 1=V, higher values reserved for as-yet unimplemented combinations\n"); */
+  /* fprintf(f, "trigger_polarization = %d\n\n", c->trigger_polarization); */
+  fprintf(f, "// Polarization for triggering, current options are \"H\", \"V\"\n");
+  fprintf(f, "// @see config_lookup_pol in nuphase-cfg.c\n");
+  fprintf(f, "// @see nuphase_trigger_polarization_t in nuphasedaq.h in libnuphase\n");
+  fprintf(f, "trigger_polarization = \"%s\";\n", nuphase_trigger_polarization_strings[c->trigger_polarization]);
 
   fprintf(f,"   //enable the phased trigger readout\n"); 
   fprintf(f,"   enable_phased_trigger = %d;\n\n",c->enable_phased_trigger); 

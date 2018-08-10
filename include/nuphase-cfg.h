@@ -3,7 +3,8 @@
 
 #include "nuphase-common.h" 
 #include "nuphase.h" 
-#include "nuphasehk.h" 
+#include "nuphasehk.h"
+#include "nuphasedaq.h" 
 #include <stdlib.h>
 
 /** 
@@ -83,8 +84,8 @@ typedef struct nuphase_acq_cfg
   /** 1 to enable the phased trigger, 0 otherwise */ 
   int enable_phased_trigger; 
 
-  /** 0 for just H, 1 for just V, higher values for some AND,OR logic coming soon(TM) **/
-  int trigger_polarization;
+  // Trigger polarization, see 
+  nuphase_trigger_polarization_t trigger_polarization;
 
   /** cal pulser state , 0 for off, 3 for on (or 2 for nothing)
    *
@@ -203,8 +204,6 @@ typedef struct nuphase_hkd_cfg
 void nuphase_hk_config_init(nuphase_hk_cfg_t *); 
 int nuphase_hk_config_read(const char * file, nuphase_hk_cfg_t * ); 
 int nuphase_hk_config_write(const char * file, const nuphase_hk_cfg_t * ); 
-
-
 
 
 #endif
