@@ -382,7 +382,7 @@ void * monitor_thread(void *v)
  //     nuphase_status_print(stdout,st); 
 
       int ibeam; 
-      uint32_t dont_set; 
+      uint32_t dont_set = 0; 
       fs_avg_add(st); 
       for (ibeam = 0; ibeam < NP_NUM_BEAMS; ibeam++)
       {

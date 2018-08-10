@@ -329,7 +329,7 @@ void nuphase_acq_config_init ( nuphase_acq_cfg_t * c)
 }
 
 
-static const char* nuphase_trigger_polarization_strings[] = {"H", "V"};
+
 
 void config_lookup_pol(config_t* cfg, const char* key, nuphase_trigger_polarization_t* pol){
 
@@ -337,17 +337,22 @@ void config_lookup_pol(config_t* cfg, const char* key, nuphase_trigger_polarizat
   if(config_lookup_string(cfg, key, &str)){
 
     int foundMatch = 0;
-    for(int i=0; i < 2; i++){
-      if(strcmp(str, nuphase_trigger_polarization_strings[i])==0){
-	*pol = i;
+    int polInd=-1;
+    const char* polName = NULL;
+    do {
+      polInd++;
+      polName = nuphase_trigger_polarization_name((nuphase_trigger_polarization_t) polInd);
+      if(polName && strcmp(str, polName)==0){
 	foundMatch = 1;
 	break;
       }
     }
+    while(polName != NULL);
+
     if(foundMatch==0){
       fprintf(stderr, "Warning in %s: Got unexpected pol config: %s\n", __PRETTY_FUNCTION__, key);
-      fprintf(stderr, "Setting trigger polarization to H (default)\n");
-      pol = H;
+      fprintf(stderr, "Setting trigger polarization to \"%s\" (default)\n", nuphase_trigger_polarization_name(NUPHASE_DEFAULT_TRIGGER_POLARIZATION));
+      pol = NUPHASE_DEFAULT_TRIGGER_POLARIZATION;
     }
   }
 }
@@ -545,7 +550,7 @@ int nuphase_acq_config_write(const char * fi, const nuphase_acq_cfg_t * c)
   fprintf(f, "// Polarization for triggering, current options are \"H\", \"V\"\n");
   fprintf(f, "// @see config_lookup_pol in nuphase-cfg.c\n");
   fprintf(f, "// @see nuphase_trigger_polarization_t in nuphasedaq.h in libnuphase\n");
-  fprintf(f, "trigger_polarization = \"%s\";\n", nuphase_trigger_polarization_strings[c->trigger_polarization]);
+  fprintf(f, "trigger_polarization = \"%s\";\n", nuphase_trigger_polarization_name(c->trigger_polarization));
 
   fprintf(f,"   //enable the phased trigger readout\n"); 
   fprintf(f,"   enable_phased_trigger = %d;\n\n",c->enable_phased_trigger); 
