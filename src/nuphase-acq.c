@@ -382,10 +382,20 @@ void * monitor_thread(void *v)
  //     nuphase_status_print(stdout,st); 
 
       int ibeam; 
+      uint32_t dont_set; 
       fs_avg_add(st); 
       for (ibeam = 0; ibeam < NP_NUM_BEAMS; ibeam++)
       {
 
+        if (!config.scaler_goal[ibeam])
+        {
+          dont_set |= (1 << ibeam); 
+          control.last_measured[ibeam]=0; 
+          control.sum_error[ibeam]=0;
+          control.error[ibeam] = 0; 
+          mb.thresholds[ibeam] = st->trigger_thresholds[ibeam]; 
+          continue; 
+        }
        
         ///// REVISIT THIS 
         ///// We need to figure out how to use both the fast and slow scalers
@@ -432,7 +442,7 @@ void * monitor_thread(void *v)
       }
 
       //apply the thresholds 
-      nuphase_set_thresholds(device, mb.thresholds,0); 
+      nuphase_set_thresholds(device, mb.thresholds,dont_set); 
       
       //copy over the current control status 
       memcpy(&mb.control, &control, sizeof(control)); 
