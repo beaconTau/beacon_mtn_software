@@ -20,8 +20,8 @@
 
 void nuphase_start_config_init(nuphase_start_cfg_t * c) 
 {
-  c->set_attenuation_cmd = "cd /home/nuphase/nuphase-python; python set_attenuation.py"; 
-  c->reconfigure_fpga_cmd = "cd /home/nuphase/nuphase-python; ./reconfigureFPGA -a 0;"; 
+  c->set_attenuation_cmd = "cd /home/nuphase/nuphase_python; python set_attenuation.py";
+  c->reconfigure_fpga_cmd = "cd /home/nuphase/nuphase_python; ./reconfigureFPGA -a 0;";
   c->desired_rms= 4.2; 
   c->out_dir = "/data/startup/"; 
 }
@@ -265,7 +265,7 @@ void nuphase_acq_config_init ( nuphase_acq_cfg_t * c)
   c->run_file = "/nuphase/runfile" ; 
   c->status_save_file = "/nuphase/last.st.bin"; 
   c->output_directory = "/data/" ; 
-  c->alignment_command = "cd /home/nuphase/nuphase-python/;  python align_adcs.py" ; 
+  c->alignment_command = "cd /home/nuphase/nuphase_python/;  python align_adcs.py" ;
 
   c->load_thresholds_from_status_file = 1; 
 
@@ -323,7 +323,7 @@ void nuphase_acq_config_init ( nuphase_acq_cfg_t * c)
   c->n_fast_scaler_avg = 20; 
   c->realtime_priority = 20; 
 
-  c->copy_paths_to_rundir = "/home/nuphase/nuphase-python/output:/proc/loadavg"; 
+  c->copy_paths_to_rundir = "/home/nuphase/nuphase_python/output:/proc/loadavg";
   c->copy_configs = 1; 
   memset(c->trig_delays,0,sizeof(c->trig_delays)); 
 }
