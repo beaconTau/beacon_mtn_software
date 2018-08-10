@@ -762,10 +762,14 @@ static int configure_device()
   nuphase_calpulse(device,config.calpulser_state); 
 
   //set up the pretrigger
-  nuphase_set_pretrigger(device, (uint8_t) config.pretrigger & 0x7); 
+  nuphase_set_pretrigger(device, (uint8_t) config.pretrigger & 0x7);
 
   //set up the trigger delays 
-  nuphase_set_trigger_delays(device, config.trig_delays); 
+  nuphase_set_trigger_delays(device, config.trig_delays);
+
+  //set the trigger polarization
+  nuphase_set_trigger_polarization(device, config.trigger_polarization);
+
 
   if (config.apply_attenuations)
   {

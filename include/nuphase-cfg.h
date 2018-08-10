@@ -3,7 +3,8 @@
 
 #include "nuphase-common.h" 
 #include "nuphase.h" 
-#include "nuphasehk.h" 
+#include "nuphasehk.h"
+#include "nuphasedaq.h" 
 #include <stdlib.h>
 
 /** 
@@ -83,6 +84,9 @@ typedef struct nuphase_acq_cfg
   /** 1 to enable the phased trigger, 0 otherwise */ 
   int enable_phased_trigger; 
 
+  // Trigger polarization, see 
+  nuphase_trigger_polarization_t trigger_polarization;
+
   /** cal pulser state , 0 for off, 3 for on (or 2 for nothing)
    *
    * I don't think we'd ever want it on. If you do, make sure
@@ -155,9 +159,10 @@ int nuphase_acq_config_write(const char * file, const nuphase_acq_cfg_t * );
 typedef struct nuphase_copy_cfg
 {
   const char * remote_hostname; 
+  int port; //ssh port for the remote
   const char * remote_path; 
   const char * remote_user; 
-  const char * local_path; 
+  const char * local_path;
   int free_space_delete_threshold; //MB 
   int delete_files_older_than;  //days
   int wakeup_interval; //seconds
@@ -199,8 +204,6 @@ typedef struct nuphase_hkd_cfg
 void nuphase_hk_config_init(nuphase_hk_cfg_t *); 
 int nuphase_hk_config_read(const char * file, nuphase_hk_cfg_t * ); 
 int nuphase_hk_config_write(const char * file, const nuphase_hk_cfg_t * ); 
-
-
 
 
 #endif
