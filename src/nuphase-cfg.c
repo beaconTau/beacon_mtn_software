@@ -292,7 +292,7 @@ void nuphase_acq_config_init ( nuphase_acq_cfg_t * c)
   c->spi_clock = 20; 
   c->waveform_length = 512; 
   c->enable_phased_trigger = 1;
-  c->trigger_polarization = H;
+  c->trigger_polarization = NUPHASE_DEFAULT_TRIGGER_POLARIZATION;
   c->calpulser_state = 0; 
 
 
