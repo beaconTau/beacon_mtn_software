@@ -83,6 +83,9 @@ typedef struct nuphase_acq_cfg
   /** 1 to enable the phased trigger, 0 otherwise */ 
   int enable_phased_trigger; 
 
+  /** 0 for just H, 1 for just V, higher values for some AND,OR logic coming soon(TM) **/
+  int trigger_polarization;
+
   /** cal pulser state , 0 for off, 3 for on (or 2 for nothing)
    *
    * I don't think we'd ever want it on. If you do, make sure

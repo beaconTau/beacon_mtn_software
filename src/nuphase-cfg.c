@@ -290,7 +290,8 @@ void nuphase_acq_config_init ( nuphase_acq_cfg_t * c)
   c->run_length = 10800; 
   c->spi_clock = 20; 
   c->waveform_length = 512; 
-  c->enable_phased_trigger = 1; 
+  c->enable_phased_trigger = 1;
+  c->trigger_polarization = 0;
   c->calpulser_state = 0; 
 
 
@@ -363,6 +364,7 @@ int nuphase_acq_config_read(const char * fi, nuphase_acq_cfg_t * c)
   config_lookup_float(&cfg,"control.monitor_interval",&c->monitor_interval); 
   config_lookup_float(&cfg,"control.sw_trigger_interval",&c->sw_trigger_interval); 
   config_lookup_int(&cfg,"control.enable_phased_trigger",&c->enable_phased_trigger); 
+  config_lookup_int(&cfg,"control.trigger_polarization",&c->trigger_polarization);
   config_lookup_int(&cfg,"control.secs_before_phased_trigger",&c->secs_before_phased_trigger); 
   config_lookup_float(&cfg,"control.fast_scaler_weight",&c->fast_scaler_weight); 
   config_lookup_float(&cfg,"control.slow_scaler_weight",&c->slow_scaler_weight); 
@@ -513,6 +515,12 @@ int nuphase_acq_config_write(const char * fi, const nuphase_acq_cfg_t * c)
   fprintf(f,"   //enable the phased trigger readout\n"); 
   fprintf(f,"   enable_phased_trigger = %d;\n\n",c->enable_phased_trigger); 
 
+  fprintf(f, "//Which polarization to trigger on, 0=H, 1=V, higher values reserved for as-yet unimplemented combinations\n");
+  fprintf(f, "trigger_polarization = %d\n\n", c->trigger_polarization);
+
+  fprintf(f,"   //enable the phased trigger readout\n"); 
+  fprintf(f,"   enable_phased_trigger = %d;\n\n",c->enable_phased_trigger); 
+  
   fprintf(f,"   //delay for phased trigger to start\n"); 
   fprintf(f,"   secs_before_phased_trigger = %d;\n\n", c->secs_before_phased_trigger); 
 
