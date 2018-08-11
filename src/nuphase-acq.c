@@ -322,7 +322,8 @@ void * monitor_thread(void *v)
   //this keeps track of the last time we monitored
   struct timespec last_mon = { .tv_sec = 0, .tv_nsec = 0}; //dont' read scalers yet! 
 
-
+  // turn off verification, a hacky work around for now...
+  nuphase_enable_verification_mode(device, 0);
 
   // the phased trigger status, so that we can turn it on or off as appropriate
   // start as undefined
@@ -354,8 +355,8 @@ void * monitor_thread(void *v)
       }
       else
       {
-          nuphase_phased_trigger_readout(device, 1); 
-          phased_trigger_status = 1; 
+	nuphase_phased_trigger_readout(device, 1); 
+	phased_trigger_status = 1; 
       }
     }
     else if (!config.enable_phased_trigger && phased_trigger_status == 1)
@@ -430,10 +431,13 @@ void * monitor_thread(void *v)
         double dthreshold =   control.k_p * e + control.k_i * ie * control.k_d * de; 
         
         //cap the threshold increase at each step 
-        if (dthreshold > config.max_threshold_increase) dthreshold = config.max_threshold_increase; 
+        if (dthreshold > config.max_threshold_increase) dthreshold = config.max_threshold_increase;
 
-        mb.thresholds[ibeam] = st->trigger_thresholds[ibeam] + dthreshold; 
+        mb.thresholds[ibeam] = st->trigger_thresholds[ibeam] + dthreshold;
 
+	if(mb.thresholds[ibeam] < config.min_threshold){
+	  mb.thresholds[ibeam] = config.min_threshold;
+	}
 
 //        printf("BEAM %d\n", ibeam); 
 //        printf("  slow scaler: %f, fast_scaler: %f, avg: %f\n", measured_slow, measured_fast, measured); 
@@ -762,7 +766,7 @@ static int configure_device()
   nuphase_calpulse(device,config.calpulser_state); 
 
   //set up the pretrigger
-  nuphase_set_pretrigger(device, (uint8_t) config.pretrigger & 0x7);
+  nuphase_set_pretrigger(device, (uint8_t) config.pretrigger & 0xf);
 
   //set up the trigger delays 
   nuphase_set_trigger_delays(device, config.trig_delays);
@@ -770,6 +774,9 @@ static int configure_device()
   //set the trigger polarization
   nuphase_set_trigger_polarization(device, config.trigger_polarization);
 
+  /* //enable the trigger, if desired */
+  /* nuphase_set_phased_trigger(device, config.enable_phased_trigger); */
+  
 
   if (config.apply_attenuations)
   {
@@ -916,7 +923,7 @@ static int setup()
   /* nuphase_set_trigger_enables(device, slave_enables, SLAVE);  */
 
   nuphase_trigger_enable_t master_enables = nuphase_get_trigger_enables(device,MASTER); 
-  master_enables.enable_beamforming = 1; 
+  master_enables.enable_beamforming = 1;
   nuphase_set_trigger_enables(device, master_enables, MASTER); 
  
 

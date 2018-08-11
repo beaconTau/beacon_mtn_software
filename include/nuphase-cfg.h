@@ -57,6 +57,9 @@ typedef struct nuphase_acq_cfg
   // pid goal constats;
   double k_p,k_i, k_d; 
 
+  // puts a floor on the thresholds
+  uint16_t min_threshold;
+
   // the maximum the threshold can increase in a  step 
   uint16_t max_threshold_increase; 
 

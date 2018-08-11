@@ -277,6 +277,7 @@ void nuphase_acq_config_init ( nuphase_acq_cfg_t * c)
   c->k_p = 10; 
   c->k_i = 0.1; 
   c->k_d = 0; 
+  c->min_threshold = 1000;
   c->max_threshold_increase = 500; 
   c->trigger_mask = 0xffffff; 
   c->channel_mask = 0xff; 
@@ -389,7 +390,9 @@ int nuphase_acq_config_read(const char * fi, nuphase_acq_cfg_t * c)
   config_lookup_float(&cfg,"control.k_p",&c->k_p); 
   config_lookup_float(&cfg,"control.k_i",&c->k_i); 
   config_lookup_float(&cfg,"control.k_d",&c->k_d); 
-  config_lookup_int(&cfg,"control.max_threshold_increase",&tmp); 
+  config_lookup_int(&cfg,"control.min_threshold",&tmp);
+  c->min_threshold = tmp;
+  config_lookup_int(&cfg,"control.max_threshold_increase",&tmp);   
   c->max_threshold_increase = tmp; 
   config_lookup_float(&cfg,"control.monitor_interval",&c->monitor_interval); 
   config_lookup_float(&cfg,"control.sw_trigger_interval",&c->sw_trigger_interval); 
@@ -533,9 +536,12 @@ int nuphase_acq_config_write(const char * fi, const nuphase_acq_cfg_t * c)
   fprintf(f,"   // pid loop differential term\n"); 
   fprintf(f,"   k_d = %g;\n\n", c->k_d);
 
+  fprintf(f,"   // puts a floor on the thresholds\n"); 
+  fprintf(f,"   min_threshold=%u;\n\n", c->min_threshold);
+
   fprintf(f,"   // max threshold increase per step \n"); 
   fprintf(f,"   max_threshold_increase=%u;\n\n", c->max_threshold_increase); 
-
+  
   fprintf(f,"   //monitoring interval, for PID loop (in seconds)\n"); 
   fprintf(f,"   monitor_interval = %g;\n\n",c->monitor_interval); 
 
