@@ -116,6 +116,17 @@ int main (int nargs, char ** args)
     do_close(out, out_name); 
   }
 
+  printf("Waiting five seconds") ; 
+  sleep(1); 
+  printf("Waiting four seconds") ; 
+  sleep(1); 
+  printf("Waiting three seconds") ; 
+  sleep(1); 
+  printf("Waiting two seconds") ; 
+  sleep(1); 
+  printf("Waiting one second") ; 
+  sleep(1); 
+
 
   return 0; 
 }

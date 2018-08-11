@@ -117,7 +117,7 @@ static nuphase_acq_cfg_t config;
 static nuphase_start_cfg_t start_config; 
 
 /* Mutex protecting the configuration */
-static pthread_mutex_t config_lock; 
+static pthread_mutex_t config_lock = PTHREAD_MUTEX_INITIALIZER; 
 
 /* The device */
 static nuphase_dev_t* device;
@@ -854,6 +854,9 @@ static int setup()
         system(cmd); 
       }
     }
+
+//    printf("Sleeping for 10 seconds\n"); 
+//    sleep(10); 
 
   }
 
