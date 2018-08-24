@@ -265,17 +265,17 @@ void nuphase_acq_config_init ( nuphase_acq_cfg_t * c)
   c->run_file = "/nuphase/runfile" ; 
   c->status_save_file = "/nuphase/last.st.bin"; 
   c->output_directory = "/data/" ; 
-  c->alignment_command = "cd /home/nuphase/nuphase_python/;  python align_adcs.py" ;
+  c->alignment_command = "cd /home/nuphase/nuphase_python/;  python align_adcs.py -m" ;
 
   c->load_thresholds_from_status_file = 1; 
 
   int i; 
-  for ( i = 0; i < NP_NUM_BEAMS; i++) c->scaler_goal[i] = 0.75; 
+  for ( i = 0; i < NP_NUM_BEAMS; i++) c->scaler_goal[i] = i < 20 ? 0.75 : 0 ; 
   for ( i = 0; i < NP_NUM_BEAMS; i++) c->fixed_threshold[i] =  i < 20 ? 20000 : 0; 
 
   c->enable_dynamic_masking = 1; 
-  c->dynamic_masking_threshold = 10; 
-  c->dynamic_masking_holdoff = 10; 
+  c->dynamic_masking_threshold = 5; 
+  c->dynamic_masking_holdoff = 100; 
   c->use_fixed_thresholds = 0; 
   c->enable_low_pass_to_trigger = 1; 
 
@@ -593,14 +593,11 @@ int nuphase_acq_config_write(const char * fi, const nuphase_acq_cfg_t * c)
 
   /* fprintf(f, "//Which polarization to trigger on, 0=H, 1=V, higher values reserved for as-yet unimplemented combinations\n"); */
   /* fprintf(f, "trigger_polarization = %d\n\n", c->trigger_polarization); */
-  fprintf(f, "// Polarization for triggering, current options are \"H\", \"V\"\n");
-  fprintf(f, "// @see config_lookup_pol in nuphase-cfg.c\n");
-  fprintf(f, "// @see nuphase_trigger_polarization_t in nuphasedaq.h in libnuphase\n");
-  fprintf(f, "trigger_polarization = \"%s\";\n", nuphase_trigger_polarization_name(c->trigger_polarization));
+  fprintf(f, "   // Polarization for triggering, current options are \"H\", \"V\"\n");
+  fprintf(f, "   // @see config_lookup_pol in nuphase-cfg.c\n");
+  fprintf(f, "   // @see nuphase_trigger_polarization_t in nuphasedaq.h in libnuphase\n");
+  fprintf(f, "   trigger_polarization = \"%s\";\n", nuphase_trigger_polarization_name(c->trigger_polarization));
 
-  fprintf(f,"   //enable the phased trigger readout\n"); 
-  fprintf(f,"   enable_phased_trigger = %d;\n\n",c->enable_phased_trigger); 
-  
   fprintf(f,"   //delay for phased trigger to start\n"); 
   fprintf(f,"   secs_before_phased_trigger = %d;\n\n", c->secs_before_phased_trigger); 
 
@@ -687,7 +684,7 @@ int nuphase_acq_config_write(const char * fi, const nuphase_acq_cfg_t * c)
   fprintf(f,"  };\n\n"); 
 
   fprintf(f,"  //Enable the low pass to trigger.\n"); 
-  fprintf(f,"  enable_low_pass_to_trigger=%d\n\n", c->enable_low_pass_to_trigger); 
+  fprintf(f,"  enable_low_pass_to_trigger = %d; \n\n", c->enable_low_pass_to_trigger); 
 
  
   fprintf(f,"};\n\n"); 
