@@ -271,7 +271,13 @@ void nuphase_acq_config_init ( nuphase_acq_cfg_t * c)
 
   int i; 
   for ( i = 0; i < NP_NUM_BEAMS; i++) c->scaler_goal[i] = 0.75; 
+  for ( i = 0; i < NP_NUM_BEAMS; i++) c->fixed_threshold[i] =  i < 20 ? 20000 : 0; 
 
+  c->enable_dynamic_masking = 1; 
+  c->dynamic_masking_threshold = 10; 
+  c->dynamic_masking_holdoff = 10; 
+  c->use_fixed_thresholds = 0; 
+  c->enable_low_pass_to_trigger = 1; 
 
   //TODO tune this 
   c->k_p = 10; 
@@ -304,14 +310,14 @@ void nuphase_acq_config_init ( nuphase_acq_cfg_t * c)
   c->disable_trigout_on_exit = 1; 
 
   //provisional reasonable values 
-  c->attenuation[0] = 9; 
-  c->attenuation[1] = 3; 
-  c->attenuation[2] = 11; 
-  c->attenuation[3] = 8; 
-  c->attenuation[4] = 7; 
-  c->attenuation[5] = 19; 
-  c->attenuation[6] = 11; 
-  c->attenuation[7] = 3; 
+  c->attenuation[0] = 0; 
+  c->attenuation[1] = 0; 
+  c->attenuation[2] = 0; 
+  c->attenuation[3] = 0; 
+  c->attenuation[4] = 0; 
+  c->attenuation[5] = 0; 
+  c->attenuation[6] = 0; 
+  c->attenuation[7] = 0; 
 
 
   c->pretrigger = 6; 
@@ -378,8 +384,12 @@ int nuphase_acq_config_read(const char * fi, nuphase_acq_cfg_t * c)
   for (i = 0; i < NP_NUM_BEAMS; i++) 
   {
     char buf[128]; 
+    int tmp; 
     sprintf(buf, "control.scaler_goal.beam%d",i); 
     config_lookup_float(&cfg, buf, &c->scaler_goal[i]); 
+    sprintf(buf, "control.fixed_threshold.beam%d",i); 
+    config_lookup_int(&cfg, buf, &tmp); 
+    c->fixed_threshold[i] = tmp; 
   }
 
   int tmp; 
@@ -405,6 +415,13 @@ int nuphase_acq_config_read(const char * fi, nuphase_acq_cfg_t * c)
   config_lookup_int(&cfg,"control.subtract_gated",&c->subtract_gated); 
   config_lookup_int(&cfg,"realtime_priority",&c->realtime_priority); 
   config_lookup_int(&cfg,"poll_usecs",&tmp); 
+  config_lookup_int(&cfg,"control.enable_dynamic_masking",&c->enable_dynamic_masking); 
+  config_lookup_int(&cfg,"control.use_fixed_thresholds",&c->use_fixed_thresholds); 
+  config_lookup_int(&cfg,"control.dynamic_masking_threshold",&tmp);
+  c->dynamic_masking_threshold = tmp; 
+  config_lookup_int(&cfg,"control.dynamic_masking_holdoff",&tmp); 
+  c->dynamic_masking_holdoff = tmp; 
+  config_lookup_int(&cfg,"device.enable_low_pass_to_trigger",&c->enable_low_pass_to_trigger); 
   c->poll_usecs = tmp; 
 
 
@@ -521,11 +538,34 @@ int nuphase_acq_config_write(const char * fi, const nuphase_acq_cfg_t * c)
   }
   fprintf(f,"    };\n\n"); 
 
+  fprintf(f,"   // fixed thresholds for each beam (in case of use_fixed_thresholds)\n"); 
+  fprintf(f,"   fixed_threshold = {\n"); 
+  for (i = 0; i < NP_NUM_BEAMS; i++)
+  {
+    fprintf(f, "     beam%d : %u;\n", i, c->fixed_threshold[i]); 
+  }
+  fprintf(f,"    };\n\n"); 
+
+
+
   fprintf(f,"   //the beams allowed to participate in the trigger\n"); 
   fprintf(f,"   trigger_mask = 0x%x;\n\n", c->trigger_mask);  
 
   fprintf(f,"   // the channels on the master allowed to participate in the trigger\n"); 
   fprintf(f,"   channel_mask = 0x%x;\n\n", c->channel_mask); 
+
+  fprintf(f,"   // enable on-board dynamic masking\n"); 
+  fprintf(f,"   enable_dynamic_masking = %d;\n\n", c->enable_dynamic_masking); 
+
+  fprintf(f,"   // dynamic masking threshold\n"); 
+  fprintf(f,"   dynamic_masking_threshold = %u;\n\n", c->dynamic_masking_threshold); 
+
+  fprintf(f,"   // dynamic masking holdoff\n"); 
+  fprintf(f,"   dynamic_masking_holdoff = %u;\n\n", c->dynamic_masking_holdoff); 
+
+  fprintf(f,"   // use fixed thresholds (don't servo!) \n"); 
+  fprintf(f,"   use_fixed_thresholds = %d;\n\n", c->use_fixed_thresholds); 
+
 
   fprintf(f,"   // pid loop proportional term\n"); 
   fprintf(f,"   k_p = %g;\n\n", c->k_p); 
@@ -643,7 +683,12 @@ int nuphase_acq_config_write(const char * fi, const nuphase_acq_cfg_t * c)
   {
     fprintf(f, "     ch%d : %u;\n", i, c->trig_delays[i]); 
   }
+
   fprintf(f,"  };\n\n"); 
+
+  fprintf(f,"  //Enable the low pass to trigger.\n"); 
+  fprintf(f,"  enable_low_pass_to_trigger=%d\n\n", c->enable_low_pass_to_trigger); 
+
  
   fprintf(f,"};\n\n"); 
 
