@@ -384,11 +384,17 @@ void * monitor_thread(void *v)
 
       int ibeam; 
       uint32_t dont_set = 0; 
-      fs_avg_add(st); 
+      if (!config.use_fixed_thresholds) fs_avg_add(st); 
+
       for (ibeam = 0; ibeam < NP_NUM_BEAMS; ibeam++)
       {
 
-        if (!config.scaler_goal[ibeam])
+        if (config.use_fixed_thresholds) 
+        {
+          mb.thresholds[ibeam] = config.fixed_threshold[ibeam]; 
+          continue; 
+        }
+        else if (!config.scaler_goal[ibeam])
         {
           dont_set |= (1 << ibeam); 
           control.last_measured[ibeam]=0; 
@@ -449,7 +455,7 @@ void * monitor_thread(void *v)
       nuphase_set_thresholds(device, mb.thresholds,dont_set); 
       
       //copy over the current control status 
-      memcpy(&mb.control, &control, sizeof(control)); 
+      if (!config.use_fixed_thresholds) memcpy(&mb.control, &control, sizeof(control)); 
 
       nuphase_buf_push(mon_buffer, &mb);
       memcpy(&last_mon,&now, sizeof(now)); 
@@ -618,9 +624,9 @@ void * write_thread(void *v)
       printf("  total events written: %d\n", ntotal_events); 
       printf("  write rate:  %g Hz\n", (num_events == 0) ? 0. :  ((float) num_events) / (now - last_print_out)); 
       printf("  write buffer occupancy: %zu \n", occupancy); 
-      fs_avg_print(stdout); 
+      if (!config.use_fixed_thresholds) fs_avg_print(stdout); 
       nuphase_status_print(stdout, last_status); 
-      pid_state_print(stdout, &last_pid); 
+      if (!config.use_fixed_thresholds) pid_state_print(stdout, &last_pid); 
       last_print_out = now; 
       num_events = 0;
     }
@@ -689,7 +695,7 @@ void * write_thread(void *v)
       }
 
       memcpy(last_status, &mon->status, sizeof(*last_status)); 
-      memcpy(&last_pid, &mon->control, sizeof(last_pid)); 
+      if (!config.use_fixed_thresholds) memcpy(&last_pid, &mon->control, sizeof(last_pid)); 
 
       //update the mmaped file if necessary 
       if ( saved_status == last_status) msync(saved_status, sizeof(nuphase_status_t),MS_ASYNC); 
@@ -788,6 +794,8 @@ static int configure_device()
 
   nuphase_set_poll_interval(device, config.poll_usecs); 
 
+  nuphase_set_trigger_path_low_pass(device, config.enable_low_pass_to_trigger); 
+  nuphase_set_dynamic_masking(device, config.enable_dynamic_masking, config.dynamic_masking_threshold, config.dynamic_masking_holdoff); 
 
  
   return 0; 

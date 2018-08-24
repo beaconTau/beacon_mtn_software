@@ -145,6 +145,13 @@ typedef struct nuphase_acq_cfg
 
   uint8_t trig_delays[NP_NUM_CHAN]; 
 
+  int use_fixed_thresholds; 
+  uint32_t fixed_threshold[NP_NUM_BEAMS];  
+  int enable_dynamic_masking; 
+  uint8_t dynamic_masking_threshold; 
+  uint8_t dynamic_masking_holdoff; 
+  int enable_low_pass_to_trigger; 
+
 
 } nuphase_acq_cfg_t; 
 
