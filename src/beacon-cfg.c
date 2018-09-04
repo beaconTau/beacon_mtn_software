@@ -1,8 +1,8 @@
 #include <libconfig.h> 
 #include <string.h> 
 
-#include "nuphase-cfg.h" 
-#include "nuphase.h"
+#include "beacon-cfg.h" 
+#include "beacon.h"
 
 
 /** Config file parsing uses libconfig. Not sure if it's the most efficient
@@ -18,16 +18,16 @@
 //start config 
 /////////////////////////////////////////////////////
 
-void nuphase_start_config_init(nuphase_start_cfg_t * c) 
+void beacon_start_config_init(beacon_start_cfg_t * c) 
 {
-  c->set_attenuation_cmd = "cd /home/nuphase/nuphase_python; python set_attenuation.py";
-  c->reconfigure_fpga_cmd = "cd /home/nuphase/nuphase_python; ./reconfigureFPGA -a 0;";
+  c->set_attenuation_cmd = "cd /home/beacon/beacon_python; python set_attenuation.py";
+  c->reconfigure_fpga_cmd = "cd /home/beacon/beacon_python; ./reconfigureFPGA -a 0;";
   c->desired_rms= 4.2; 
   c->out_dir = "/data/startup/"; 
 }
 
 
-int nuphase_start_config_read(const char * file, nuphase_start_cfg_t * c) 
+int beacon_start_config_read(const char * file, beacon_start_cfg_t * c) 
 {
   config_t cfg; 
   config_init(&cfg); 
@@ -67,13 +67,13 @@ int nuphase_start_config_read(const char * file, nuphase_start_cfg_t * c)
   return 0; 
 }
 
-int nuphase_start_config_write(const char * file, const nuphase_start_cfg_t * c) 
+int beacon_start_config_write(const char * file, const beacon_start_cfg_t * c) 
 {
   FILE * f = fopen(file,"w"); 
 
   if (!f) return 1; 
 
-  fprintf(f,"//Configuration file for nuphase-start\n\n");  
+  fprintf(f,"//Configuration file for beacon-start\n\n");  
   fprintf(f,"// Command to run after turning on boards to tune attenuations \n"); 
   fprintf(f,"set_attenuation_cmd = \"%s\";\n\n", c->set_attenuation_cmd); 
   fprintf(f,"// Command to run after turning on boards to reconfigure FGPA's\n"); 
@@ -92,7 +92,7 @@ int nuphase_start_config_write(const char * file, const nuphase_start_cfg_t * c)
 //////////////////////////////////////////////////////
 //hk config 
 /////////////////////////////////////////////////////
-void nuphase_hk_config_init(nuphase_hk_cfg_t * c) 
+void beacon_hk_config_init(beacon_hk_cfg_t * c) 
 {
   c->interval = 5; 
   c->out_dir = "/data/hk/"; 
@@ -101,7 +101,7 @@ void nuphase_hk_config_init(nuphase_hk_cfg_t * c)
   c->print_to_screen = 1; 
 }
 
-int nuphase_hk_config_read(const char * file, nuphase_hk_cfg_t * c) 
+int beacon_hk_config_read(const char * file, beacon_hk_cfg_t * c) 
 {
   config_t cfg; 
   config_init(&cfg); 
@@ -135,13 +135,13 @@ int nuphase_hk_config_read(const char * file, nuphase_hk_cfg_t * c)
   return 0; 
 }
 
-int nuphase_hk_config_write(const char * file, const nuphase_hk_cfg_t * c) 
+int beacon_hk_config_write(const char * file, const beacon_hk_cfg_t * c) 
 {
   FILE * f = fopen(file,"w"); 
 
   if (!f) return 1; 
 
-  fprintf(f,"//Configuration file for nuphase-hk\n");  
+  fprintf(f,"//Configuration file for beacon-hk\n");  
   fprintf(f, "//Polling interval, in seconds. Treated as integer.  \n"); 
   fprintf(f, "interval=%d;\n\n", c->interval); 
   fprintf(f, "//max seconds per file, in seconds. Treated as integer.  \n"); 
@@ -162,7 +162,7 @@ int nuphase_hk_config_write(const char * file, const nuphase_hk_cfg_t * c)
 // copy config 
 /////////////////////////////////////////////////////
 
-void nuphase_copy_config_init(nuphase_copy_cfg_t * c) 
+void beacon_copy_config_init(beacon_copy_cfg_t * c) 
 {
   c->remote_user = "radio" ;
   c->remote_hostname = "beacon_archive";
@@ -176,7 +176,7 @@ void nuphase_copy_config_init(nuphase_copy_cfg_t * c)
 }
 
 
-int nuphase_copy_config_read(const char * file, nuphase_copy_cfg_t * c) 
+int beacon_copy_config_read(const char * file, beacon_copy_cfg_t * c) 
 {
 
   config_t cfg; 
@@ -223,11 +223,11 @@ int nuphase_copy_config_read(const char * file, nuphase_copy_cfg_t * c)
   return 0; 
 }
 
-int nuphase_copy_config_write(const char * file, const nuphase_copy_cfg_t * c) 
+int beacon_copy_config_write(const char * file, const beacon_copy_cfg_t * c) 
 {
   FILE * f = fopen(file,"w"); 
   if (!f) return 1; 
-  fprintf(f,"//Configuration file for nuphase-copy\n\n"); 
+  fprintf(f,"//Configuration file for beacon-copy\n\n"); 
   fprintf(f,"//The host to copy data to\n"); 
   fprintf(f,"remote_hostname = \"%s\";\n\n", c->remote_hostname); 
   fprintf(f,"//The ssh port through which to access the remote\n");
@@ -259,19 +259,19 @@ int nuphase_copy_config_write(const char * file, const nuphase_copy_cfg_t * c)
 
 
 
-void nuphase_acq_config_init ( nuphase_acq_cfg_t * c) 
+void beacon_acq_config_init ( beacon_acq_cfg_t * c) 
 {
   c->spi_device = "/dev/spidev1.0"; 
-  c->run_file = "/nuphase/runfile" ; 
-  c->status_save_file = "/nuphase/last.st.bin"; 
+  c->run_file = "/beacon/runfile" ; 
+  c->status_save_file = "/beacon/last.st.bin"; 
   c->output_directory = "/data/" ; 
   c->alignment_command = "cd /home/nuphase/nuphase_python/;  python align_adcs_beacon.py" ;
 
   c->load_thresholds_from_status_file = 1; 
 
   int i; 
-  for ( i = 0; i < NP_NUM_BEAMS; i++) c->scaler_goal[i] = i < 20 ? 0.75 : 0 ; 
-  for ( i = 0; i < NP_NUM_BEAMS; i++) c->fixed_threshold[i] =  i < 20 ? 20000 : 0; 
+  for ( i = 0; i < BN_NUM_BEAMS; i++) c->scaler_goal[i] = i < 20 ? 0.75 : 0 ; 
+  for ( i = 0; i < BN_NUM_BEAMS; i++) c->fixed_threshold[i] =  i < 20 ? 20000 : 0; 
 
   c->enable_dynamic_masking = 1; 
   c->dynamic_masking_threshold = 5; 
@@ -299,7 +299,7 @@ void nuphase_acq_config_init ( nuphase_acq_cfg_t * c)
   c->spi_clock = 20; 
   c->waveform_length = 512; 
   c->enable_phased_trigger = 1;
-  c->trigger_polarization = NUPHASE_DEFAULT_TRIGGER_POLARIZATION;
+  c->trigger_polarization = BEACON_DEFAULT_TRIGGER_POLARIZATION;
   c->calpulser_state = 0; 
 
 
@@ -330,7 +330,7 @@ void nuphase_acq_config_init ( nuphase_acq_cfg_t * c)
   c->n_fast_scaler_avg = 20; 
   c->realtime_priority = 20; 
 
-  c->copy_paths_to_rundir = "/home/nuphase/nuphase_python/output:/proc/loadavg";
+  c->copy_paths_to_rundir = "/home/beacon/beacon_python/output:/proc/loadavg";
   c->copy_configs = 1; 
   memset(c->trig_delays,0,sizeof(c->trig_delays)); 
 }
@@ -338,7 +338,7 @@ void nuphase_acq_config_init ( nuphase_acq_cfg_t * c)
 
 
 
-void config_lookup_pol(config_t* cfg, const char* key, nuphase_trigger_polarization_t* pol){
+void config_lookup_pol(config_t* cfg, const char* key, beacon_trigger_polarization_t* pol){
 
   const char* str;
   if(config_lookup_string(cfg, key, &str)){
@@ -348,7 +348,7 @@ void config_lookup_pol(config_t* cfg, const char* key, nuphase_trigger_polarizat
     const char* polName = NULL;
     do {
       polInd++;
-      polName = nuphase_trigger_polarization_name((nuphase_trigger_polarization_t) polInd);
+      polName = beacon_trigger_polarization_name((beacon_trigger_polarization_t) polInd);
       if(polName && strcmp(str, polName)==0){
 	foundMatch = 1;
 	break;
@@ -358,13 +358,13 @@ void config_lookup_pol(config_t* cfg, const char* key, nuphase_trigger_polarizat
 
     if(foundMatch==0){
       fprintf(stderr, "Warning in %s: Got unexpected pol config: %s\n", __PRETTY_FUNCTION__, key);
-      fprintf(stderr, "Setting trigger polarization to \"%s\" (default)\n", nuphase_trigger_polarization_name(NUPHASE_DEFAULT_TRIGGER_POLARIZATION));
-      pol = NUPHASE_DEFAULT_TRIGGER_POLARIZATION;
+      fprintf(stderr, "Setting trigger polarization to \"%s\" (default)\n", beacon_trigger_polarization_name(BEACON_DEFAULT_TRIGGER_POLARIZATION));
+      pol = BEACON_DEFAULT_TRIGGER_POLARIZATION;
     }
   }
 }
 
-int nuphase_acq_config_read(const char * fi, nuphase_acq_cfg_t * c) 
+int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c) 
 {
 
   config_t cfg; 
@@ -381,7 +381,7 @@ int nuphase_acq_config_read(const char * fi, nuphase_acq_cfg_t * c)
  
   
   int i; 
-  for (i = 0; i < NP_NUM_BEAMS; i++) 
+  for (i = 0; i < BN_NUM_BEAMS; i++) 
   {
     char buf[128]; 
     int tmp; 
@@ -456,7 +456,7 @@ int nuphase_acq_config_read(const char * fi, nuphase_acq_cfg_t * c)
   config_lookup_int(&cfg,"device.spi_clock", &c->spi_clock); 
   config_lookup_int(&cfg,"device.apply_attenuations", &c->apply_attenuations); 
 
-  for (i = 0; i < NP_NUM_CHAN; i++) 
+  for (i = 0; i < BN_NUM_CHAN; i++) 
   {
       char buf[128]; 
       sprintf(buf,"device.attenuation.ch%d", i); 
@@ -501,7 +501,7 @@ int nuphase_acq_config_read(const char * fi, nuphase_acq_cfg_t * c)
   config_lookup_int(&cfg,"output.status_per_file", &c->status_per_file); 
   config_lookup_int(&cfg,"output.copy_configs", &c->copy_configs); 
 
-  for (i = 0; i < NP_NUM_CHAN; i++)
+  for (i = 0; i < BN_NUM_CHAN; i++)
   {
     char buf[128]; 
     sprintf(buf,"device.trig_delays.ch%d",i); 
@@ -517,13 +517,13 @@ int nuphase_acq_config_read(const char * fi, nuphase_acq_cfg_t * c)
 
 }
 
-int nuphase_acq_config_write(const char * fi, const nuphase_acq_cfg_t * c) 
+int beacon_acq_config_write(const char * fi, const beacon_acq_cfg_t * c) 
 {
 
   FILE * f = fopen(fi,"w");  
   int i = 0; 
   if (!f) return -1; 
-  fprintf(f,"// config file for nuphase-acq\n"); 
+  fprintf(f,"// config file for beacon-acq\n"); 
   fprintf(f,"// not all options are changeable by restart\n\n"); 
 
   fprintf(f,"// settings related to threshold  / trigger control\n"); 
@@ -532,7 +532,7 @@ int nuphase_acq_config_write(const char * fi, const nuphase_acq_cfg_t * c)
   fprintf(f,"{\n"); 
   fprintf(f,"   // scaler goals for each beam, desired rate ( in Hz)\n"); 
   fprintf(f,"   scaler_goal = {\n"); 
-  for (i = 0; i < NP_NUM_BEAMS; i++)
+  for (i = 0; i < BN_NUM_BEAMS; i++)
   {
     fprintf(f, "     beam%d : %g;\n", i, c->scaler_goal[i]); 
   }
@@ -540,7 +540,7 @@ int nuphase_acq_config_write(const char * fi, const nuphase_acq_cfg_t * c)
 
   fprintf(f,"   // fixed thresholds for each beam (in case of use_fixed_thresholds)\n"); 
   fprintf(f,"   fixed_threshold = {\n"); 
-  for (i = 0; i < NP_NUM_BEAMS; i++)
+  for (i = 0; i < BN_NUM_BEAMS; i++)
   {
     fprintf(f, "     beam%d : %u;\n", i, c->fixed_threshold[i]); 
   }
@@ -594,9 +594,9 @@ int nuphase_acq_config_write(const char * fi, const nuphase_acq_cfg_t * c)
   /* fprintf(f, "//Which polarization to trigger on, 0=H, 1=V, higher values reserved for as-yet unimplemented combinations\n"); */
   /* fprintf(f, "trigger_polarization = %d\n\n", c->trigger_polarization); */
   fprintf(f, "   // Polarization for triggering, current options are \"H\", \"V\"\n");
-  fprintf(f, "   // @see config_lookup_pol in nuphase-cfg.c\n");
-  fprintf(f, "   // @see nuphase_trigger_polarization_t in nuphasedaq.h in libnuphase\n");
-  fprintf(f, "   trigger_polarization = \"%s\";\n", nuphase_trigger_polarization_name(c->trigger_polarization));
+  fprintf(f, "   // @see config_lookup_pol in beacon-cfg.c\n");
+  fprintf(f, "   // @see beacon_trigger_polarization_t in beacondaq.h in libbeacon\n");
+  fprintf(f, "   trigger_polarization = \"%s\";\n", beacon_trigger_polarization_name(c->trigger_polarization));
 
   fprintf(f,"   //delay for phased trigger to start\n"); 
   fprintf(f,"   secs_before_phased_trigger = %d;\n\n", c->secs_before_phased_trigger); 
@@ -664,7 +664,7 @@ int nuphase_acq_config_write(const char * fi, const nuphase_acq_cfg_t * c)
   fprintf(f,"  // attenuation, per channel, if applied. \n"); 
 
   fprintf(f,"  attenuation =  {"); 
-  for (i = 0; i < NP_NUM_CHAN; i++)
+  for (i = 0; i < BN_NUM_CHAN; i++)
     fprintf(f,  "ch%d: %d;  " , i, c->attenuation[i]); 
   fprintf(f,"} ;\n\n"); 
 
@@ -676,7 +676,7 @@ int nuphase_acq_config_write(const char * fi, const nuphase_acq_cfg_t * c)
 
   fprintf(f,"  //channel trig delays (right now can be 0-3)\n"); 
   fprintf(f,"  trig_delays = {\n"); 
-  for (i = 0; i < NP_NUM_CHAN; i++)
+  for (i = 0; i < BN_NUM_CHAN; i++)
   {
     fprintf(f, "     ch%d : %u;\n", i, c->trig_delays[i]); 
   }

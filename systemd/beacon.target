@@ -1,5 +1,5 @@
 [Unit]
-Description= NuPhase autonomous software
+Description= Beacon autonomous software
 Wants = multi-user.target time-sync.target
 After = multi-user.target time-sync.target
 AllowIsolate = yes

@@ -3,7 +3,7 @@
 #include <pthread.h>
 #include <string.h>
 #include <unistd.h> 
-#include "nuphase-buf.h"
+#include "beacon-buf.h"
 
 
 //TODO: is this really necessary on a single-core ARM? 
@@ -12,7 +12,7 @@
 static size_t buffer_count = 0; 
 
 
-struct nuphase_buf
+struct beacon_buf
 {
   void * mem; 
   volatile size_t produced_count; 
@@ -24,9 +24,9 @@ struct nuphase_buf
 
 
 
-nuphase_buf_t* nuphase_buf_init(size_t max_capacity, size_t memb_size) 
+beacon_buf_t* beacon_buf_init(size_t max_capacity, size_t memb_size) 
 {
-  nuphase_buf_t * b = malloc(sizeof(struct nuphase_buf)); 
+  beacon_buf_t * b = malloc(sizeof(struct beacon_buf)); 
 
   if (!b) 
   {
@@ -54,21 +54,21 @@ nuphase_buf_t* nuphase_buf_init(size_t max_capacity, size_t memb_size)
 }
 
 
-size_t nuphase_buf_capacity(const nuphase_buf_t *b)
+size_t beacon_buf_capacity(const beacon_buf_t *b)
 {
   return b->capacity; 
 }
 
-size_t nuphase_buf_occupancy(const nuphase_buf_t *b)
+size_t beacon_buf_occupancy(const beacon_buf_t *b)
 {
   return b->produced_count - b->consumed_count; 
 }
 
-void* nuphase_buf_getmem(nuphase_buf_t *b )
+void* beacon_buf_getmem(beacon_buf_t *b )
 {
 
   int warned = 0;
-  while(nuphase_buf_capacity(b) == nuphase_buf_occupancy(b))
+  while(beacon_buf_capacity(b) == beacon_buf_occupancy(b))
   {
     if (!warned) 
     {
@@ -81,20 +81,20 @@ void* nuphase_buf_getmem(nuphase_buf_t *b )
   return b->mem  + b->memb_size * (b->produced_count % b->capacity); 
 }
 
-void nuphase_buf_commit(nuphase_buf_t * b) 
+void beacon_buf_commit(beacon_buf_t * b) 
 {
   MEMORY_FENCE
   b->produced_count++;
 }
 
-void nuphase_buf_push(nuphase_buf_t *b, const void * mem)
+void beacon_buf_push(beacon_buf_t *b, const void * mem)
 {
-  void * ptr =  nuphase_buf_getmem(b); 
+  void * ptr =  beacon_buf_getmem(b); 
   memcpy(ptr,mem,b->memb_size); 
-  nuphase_buf_commit(b); 
+  beacon_buf_commit(b); 
 }
 
-void * nuphase_buf_pop(nuphase_buf_t * b, void * dest)
+void * beacon_buf_pop(beacon_buf_t * b, void * dest)
 {
   if (!dest) dest = malloc(b->memb_size); 
   while (b->produced_count - b->consumed_count == 0)
@@ -109,9 +109,9 @@ void * nuphase_buf_pop(nuphase_buf_t * b, void * dest)
 }
 
 
-int nuphase_buf_destroy(nuphase_buf_t *b) 
+int beacon_buf_destroy(beacon_buf_t *b) 
 {
-  int occupancy = nuphase_buf_occupancy(b); 
+  int occupancy = beacon_buf_occupancy(b); 
   free(b->mem);
   free(b); 
   return occupancy; 

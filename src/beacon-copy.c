@@ -1,6 +1,6 @@
 
-#include "nuphase-cfg.h" 
-#include "nuphase-common.h" 
+#include "beacon-cfg.h" 
+#include "beacon-common.h" 
 #include <signal.h> 
 #include <stdio.h> 
 #include <sys/statvfs.h>
@@ -16,7 +16,7 @@
  */ 
 
 
-static nuphase_copy_cfg_t cfg; 
+static beacon_copy_cfg_t cfg; 
 static volatile int stop = 0; 
 
 static char * copy_command = 0; 
@@ -35,10 +35,10 @@ static void construct_commands()
 static int read_config()
 {
   char * cfgfile; 
-  if (!nuphase_get_cfg_file(&cfgfile, NUPHASE_COPY))
+  if (!beacon_get_cfg_file(&cfgfile, BEACON_COPY))
   {
     printf("Reading %s\n", cfgfile); 
-    nuphase_copy_config_read(cfgfile, &cfg); 
+    beacon_copy_config_read(cfgfile, &cfg); 
     free(cfgfile);
   }
 
@@ -81,7 +81,7 @@ int main(int nargs, char ** arsg)
   sigaction(SIGUSR2, &sa,0); 
 
   //set up config
-  nuphase_copy_config_init(&cfg); 
+  beacon_copy_config_init(&cfg); 
   read_config(); 
 
   // main loop 

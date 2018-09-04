@@ -1,14 +1,14 @@
-#ifndef _NUPHASE_CFG_H
-#define _NUPHASE_CFG_H
+#ifndef _BEACON_CFG_H
+#define _BEACON_CFG_H
 
-#include "nuphase-common.h" 
-#include "nuphase.h" 
-#include "nuphasehk.h"
-#include "nuphasedaq.h" 
+#include "beacon-common.h" 
+#include "beacon.h" 
+#include "beaconhk.h"
+#include "beacondaq.h" 
 #include <stdlib.h>
 
 /** 
- * \file nuphase-cfg.h 
+ * \file beacon-cfg.h 
  *
  * This contains the configuration structs
  * and the methods to read / write them. 
@@ -20,8 +20,8 @@
 
 
 
-/** Configuration options for nuphase-acq */ 
-typedef struct nuphase_acq_cfg
+/** Configuration options for beacon-acq */ 
+typedef struct beacon_acq_cfg
 {
 
   /* the names of the spi devices
@@ -43,7 +43,7 @@ typedef struct nuphase_acq_cfg
   const char * output_directory; 
 
   //scaler goals, in Hz 
-  double scaler_goal[NP_NUM_BEAMS]; 
+  double scaler_goal[BN_NUM_BEAMS]; 
 
   // trigger mask
   uint32_t trigger_mask; 
@@ -88,7 +88,7 @@ typedef struct nuphase_acq_cfg
   int enable_phased_trigger; 
 
   // Trigger polarization, see 
-  nuphase_trigger_polarization_t trigger_polarization;
+  beacon_trigger_polarization_t trigger_polarization;
 
   /** cal pulser state , 0 for off, 3 for on (or 2 for nothing)
    *
@@ -113,7 +113,7 @@ typedef struct nuphase_acq_cfg
   // Use this to apply the attenuations instead of just
   // using whatever is on the board. 
   int apply_attenuations; 
-  uint8_t attenuation[NP_NUM_CHAN]; 
+  uint8_t attenuation[BN_NUM_CHAN]; 
 
 
   // Program called to check alignment / align the cal pulser 
@@ -143,30 +143,30 @@ typedef struct nuphase_acq_cfg
 
   uint16_t poll_usecs; 
 
-  uint8_t trig_delays[NP_NUM_CHAN]; 
+  uint8_t trig_delays[BN_NUM_CHAN]; 
 
   int use_fixed_thresholds; 
-  uint32_t fixed_threshold[NP_NUM_BEAMS];  
+  uint32_t fixed_threshold[BN_NUM_BEAMS];  
   int enable_dynamic_masking; 
   uint8_t dynamic_masking_threshold; 
   uint8_t dynamic_masking_holdoff; 
   int enable_low_pass_to_trigger; 
 
 
-} nuphase_acq_cfg_t; 
+} beacon_acq_cfg_t; 
 
 
 /** Initialize a config with defaults. Usually a good idea to do this before reading a file in case the config file doesn't have all the keys */
-void nuphase_acq_config_init(nuphase_acq_cfg_t *); 
+void beacon_acq_config_init(beacon_acq_cfg_t *); 
 
 /** Replace any values in the config with the values from the file */ 
-int nuphase_acq_config_read(const char * file, nuphase_acq_cfg_t * ); 
+int beacon_acq_config_read(const char * file, beacon_acq_cfg_t * ); 
 
 /** Write out the current configuration to the file */ 
-int nuphase_acq_config_write(const char * file, const nuphase_acq_cfg_t * ); 
+int beacon_acq_config_write(const char * file, const beacon_acq_cfg_t * ); 
 
 
-typedef struct nuphase_copy_cfg
+typedef struct beacon_copy_cfg
 {
   const char * remote_hostname; 
   int port; //ssh port for the remote
@@ -178,28 +178,28 @@ typedef struct nuphase_copy_cfg
   int wakeup_interval; //seconds
   int dummy_mode; // don't actually delete, just print files 
 
-} nuphase_copy_cfg_t; 
+} beacon_copy_cfg_t; 
 
 
-void nuphase_copy_config_init(nuphase_copy_cfg_t *); 
-int nuphase_copy_config_read(const char * file, nuphase_copy_cfg_t * ); 
-int nuphase_copy_config_write(const char * file, const nuphase_copy_cfg_t * ); 
+void beacon_copy_config_init(beacon_copy_cfg_t *); 
+int beacon_copy_config_read(const char * file, beacon_copy_cfg_t * ); 
+int beacon_copy_config_write(const char * file, const beacon_copy_cfg_t * ); 
 
-typedef struct nuphase_start_cfg
+typedef struct beacon_start_cfg
 {
   const char * set_attenuation_cmd; 
   const char * reconfigure_fpga_cmd; 
   const char * out_dir; //output directory for hk data 
   double desired_rms; 
-}nuphase_start_cfg_t; 
+}beacon_start_cfg_t; 
 
 
-void nuphase_start_config_init(nuphase_start_cfg_t *); 
-int nuphase_start_config_read(const char * file, nuphase_start_cfg_t * ); 
-int nuphase_start_config_write(const char * file, const nuphase_start_cfg_t * ); 
+void beacon_start_config_init(beacon_start_cfg_t *); 
+int beacon_start_config_read(const char * file, beacon_start_cfg_t * ); 
+int beacon_start_config_write(const char * file, const beacon_start_cfg_t * ); 
 
-/* configuration options for nuphase-hkd */ 
-typedef struct nuphase_hkd_cfg
+/* configuration options for beacon-hkd */ 
+typedef struct beacon_hkd_cfg
 {
   int interval; //polling interval for HK data . Default 5 seconds 
   const char * out_dir; //output directory for hk data 
@@ -207,13 +207,13 @@ typedef struct nuphase_hkd_cfg
   const char * shm_name; //shared memory name
   int print_to_screen; //1 to print to screen 
 
-} nuphase_hk_cfg_t;
+} beacon_hk_cfg_t;
 
 
 
-void nuphase_hk_config_init(nuphase_hk_cfg_t *); 
-int nuphase_hk_config_read(const char * file, nuphase_hk_cfg_t * ); 
-int nuphase_hk_config_write(const char * file, const nuphase_hk_cfg_t * ); 
+void beacon_hk_config_init(beacon_hk_cfg_t *); 
+int beacon_hk_config_read(const char * file, beacon_hk_cfg_t * ); 
+int beacon_hk_config_write(const char * file, const beacon_hk_cfg_t * ); 
 
 
 #endif

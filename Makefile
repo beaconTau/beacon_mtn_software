@@ -1,24 +1,24 @@
 ##################################################
-## Welcome to the nuphase-ice-software Makefile ## 
+## Welcome to the beacon-ice-software Makefile ## 
 ##################################################
 
 ###################### Things you may need to change#################
-# Location of libnuphase
-LIBNUPHASE_DIR=../libnuphase
+# Location of libbeacon
+LIBBEACON_DIR=../libbeacon
 
 #installation prefix for programs 
-PREFIX=/nuphase
+PREFIX=/beacon
 
 # location for config files 
-NUPHASE_CONFIG_DIR=${PREFIX}/cfg 
+BEACON_CONFIG_DIR=${PREFIX}/cfg 
 
 ####################################################################
 # Things not meant to be changed 
 ####################################################################
 
 
-CFLAGS +=-g -O2 -Iinclude -Wall -I$(LIBNUPHASE_DIR) -D_GNU_SOURCE
-LDFLAGS+=-L$(LIBNUPHASE_DIR) -lnuphase -lnuphasedaq  -lz -lpthread -lconfig -lrt
+CFLAGS +=-g -O2 -Iinclude -Wall -I$(LIBBEACON_DIR) -D_GNU_SOURCE
+LDFLAGS+=-L$(LIBBEACON_DIR) -lbeacon -lbeacondaq  -lz -lpthread -lconfig -lrt
 
 CC=gcc 
 BUILDDIR=build
@@ -27,25 +27,25 @@ BINDIR=bin
 
 .PHONY: clean install all doc default-configs
 
-OBJS:= $(addprefix $(BUILDDIR)/, nuphase-buf.o nuphase-common.o nuphase-cfg.o )
-PROGRAMS := $(addprefix $(BINDIR)/, nuphase-acq nuphase-startup nuphase-hk nuphase-copy \
-																		nuphase-make-default-config nuphase-check-config  nuphase-current-hk\
-																		nuphase-set-saved-thresholds)
+OBJS:= $(addprefix $(BUILDDIR)/, beacon-buf.o beacon-common.o beacon-cfg.o )
+PROGRAMS := $(addprefix $(BINDIR)/, beacon-acq beacon-startup beacon-hk beacon-copy \
+																		beacon-make-default-config beacon-check-config  beacon-current-hk\
+																		beacon-set-saved-thresholds)
 INCLUDES := $(addprefix $(INCLUDEDIR)/, $(shell ls $(INCLUDEDIR)))
 
 all: $(PROGRAMS) 
 
-etc/nuphase.cfg: 
+etc/beacon.cfg: 
 	mkdir -p etc 
-	echo NUPHASE_PATH=${PREFIX}/bin > etc/nuphase.cfg 
-	echo NUPHASE_CONFIG_DIR=${NUPHASE_CONFIG_DIR}  >> etc/nuphase.cfg 
+	echo BEACON_PATH=${PREFIX}/bin > etc/beacon.cfg 
+	echo BEACON_CONFIG_DIR=${BEACON_CONFIG_DIR}  >> etc/beacon.cfg 
 
 
-default-configs: $(BINDIR)/nuphase-make-default-config 
-	$(BINDIR)/nuphase-make-default-config acq cfg/acq.cfg
-	$(BINDIR)/nuphase-make-default-config startup cfg/startup.cfg
-	$(BINDIR)/nuphase-make-default-config hk cfg/hk.cfg
-	$(BINDIR)/nuphase-make-default-config copy cfg/copy.cfg
+default-configs: $(BINDIR)/beacon-make-default-config 
+	$(BINDIR)/beacon-make-default-config acq cfg/acq.cfg
+	$(BINDIR)/beacon-make-default-config startup cfg/startup.cfg
+	$(BINDIR)/beacon-make-default-config hk cfg/hk.cfg
+	$(BINDIR)/beacon-make-default-config copy cfg/copy.cfg
 
 
 
@@ -64,22 +64,22 @@ $(BINDIR)/%: src/%.c $(INCLUDES) $(OBJS) Makefile | $(BINDIR)
 	@$(CC) $(CFLAGS) $< $(OBJS) -o $@ -L./$(LIBDIR) $(LDFLAGS) 
 
 
-install: $(PROGRAMS) $(INCLUDES) etc/nuphase.cfg 
+install: $(PROGRAMS) $(INCLUDES) etc/beacon.cfg 
 	install -d $(PREFIX)
 	install -d $(PREFIX)/bin
 	install $(PROGRAMS) $(PREFIX)/bin
 	install -d $(PREFIX)/cfg
 	cp cfg/* $(PREFIX)/cfg 
-	install etc/nuphase.cfg /etc
+	install etc/beacon.cfg /etc
 	install -d $(PREFIX)/include
 	install $(INCLUDES) $(PREFIX)/include 
 	cp systemd/* /etc/systemd/system/
 	cp scripts/* $(PREFIX)/bin
 	systemctl daemon-reload
-	systemctl enable nuphase-startup
-	systemctl enable nuphase-acq
-	systemctl enable nuphase-hk
-	systemctl enable nuphase-copy
+	systemctl enable beacon-startup
+	systemctl enable beacon-acq
+	systemctl enable beacon-hk
+	systemctl enable beacon-copy
 
 
 clean: 

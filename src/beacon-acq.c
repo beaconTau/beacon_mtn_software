@@ -29,11 +29,11 @@
 
 /************** Includes **********************************/
 
-#include "nuphase-common.h"
-#include "nuphase-cfg.h"
-#include "nuphasehk.h" 
-#include "nuphase-buf.h" 
-#include "nuphasedaq.h"
+#include "beacon-common.h"
+#include "beacon-cfg.h"
+#include "beaconhk.h" 
+#include "beacon-buf.h" 
+#include "beacondaq.h"
 #include <pthread.h> 
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -55,9 +55,9 @@ typedef struct pid_state
   double k_i; 
   double k_d; 
   int nsum; 
-  double error[NP_NUM_BEAMS] ; 
-  double sum_error[NP_NUM_BEAMS];
-  double last_measured[NP_NUM_BEAMS];
+  double error[BN_NUM_BEAMS] ; 
+  double sum_error[BN_NUM_BEAMS];
+  double last_measured[BN_NUM_BEAMS];
 } pid_state_t; 
 
 static void pid_state_init (pid_state_t * c, double p, double i, double d)
@@ -77,7 +77,7 @@ static void pid_state_print(FILE * f, const pid_state_t * pid)
 
   fprintf(f,"===PID STATE (k_p=%g, k_i=%g, k_d=%g, n: %d)) \n", pid->k_p, pid->k_i, pid->k_d, pid->nsum); 
   int ibeam; 
-  for (ibeam = 0; ibeam < NP_NUM_BEAMS; ibeam++)
+  for (ibeam = 0; ibeam < BN_NUM_BEAMS; ibeam++)
   {
     fprintf(f,"   Beam %d :: error: %g ::  sum_error: %g ::  last_measured: %g\n",ibeam , pid->error[ibeam], pid->sum_error[ibeam], pid->last_measured[ibeam] );  
   }
@@ -95,41 +95,41 @@ static void pid_state_print(FILE * f, const pid_state_t * pid)
 typedef struct acq_buffer
 {
   int nfilled; 
-  nuphase_event_t events[NP_NUM_BUFFER]; 
-  nuphase_header_t headers[NP_NUM_BUFFER]; 
+  beacon_event_t events[BN_NUM_BUFFER]; 
+  beacon_header_t headers[BN_NUM_BUFFER]; 
 } acq_buffer_t;
 
 
 /* this is what is stored within the monitor buffer */ 
 typedef struct monitor_buffer
 {
-  nuphase_status_t status; //status before
-  uint32_t thresholds[NP_NUM_BEAMS]; //thresholds when written 
+  beacon_status_t status; //status before
+  uint32_t thresholds[BN_NUM_BEAMS]; //thresholds when written 
   pid_state_t control; //the pid state 
 } monitor_buffer_t; 
 
 /**************Static vars *******************************/
 
 /* The configuration state */ 
-static nuphase_acq_cfg_t config; 
+static beacon_acq_cfg_t config; 
 
 /** Need this to apply attenuation */
-static nuphase_start_cfg_t start_config; 
+static beacon_start_cfg_t start_config; 
 
 /* Mutex protecting the configuration */
 static pthread_mutex_t config_lock = PTHREAD_MUTEX_INITIALIZER; 
 
 /* The device */
-static nuphase_dev_t* device;
+static beacon_dev_t* device;
 
 /* Acquisition thread handles */ 
 static pthread_t the_acq_thread; 
 
 /*Buffer for acq thread */ 
-static nuphase_buf_t* acq_buffer = 0; 
+static beacon_buf_t* acq_buffer = 0; 
 
 /*Buffer for monitor thread */ 
-static nuphase_buf_t* mon_buffer = 0; 
+static beacon_buf_t* mon_buffer = 0; 
 
 /* Monitor thread handle */ 
 static pthread_t the_mon_thread; 
@@ -140,7 +140,7 @@ static pthread_t the_wri_thread;
 static pid_state_t control; 
 
 static int status_save_fd = -1; 
-static nuphase_status_t * saved_status = 0; 
+static beacon_status_t * saved_status = 0; 
 
 /* used for exiting */ 
 static volatile int die; 
@@ -213,7 +213,7 @@ int main(int nargs, char ** args)
  *
  * This will wait for data, then record and it and put it into a memory buffer, awaiting to be written to disk. 
  *
- * It's remarkably simple since nuphasedaq.so does all the hard work. 
+ * It's remarkably simple since beacondaq.so does all the hard work. 
  *
  ***/ 
 void * acq_thread(void *v) 
@@ -223,14 +223,14 @@ void * acq_thread(void *v)
   while(!die) 
   {
    /* grab a buffer to fill */ 
-    acq_buffer_t * mem = (acq_buffer_t*) nuphase_buf_getmem(acq_buffer); 
+    acq_buffer_t * mem = (acq_buffer_t*) beacon_buf_getmem(acq_buffer); 
     mem->nfilled = 0; //nothing filled
 
     while (!mem->nfilled && !die) 
     {
-      mem->nfilled = nuphase_wait_for_and_read_multiple_events(device, &mem->headers, &mem->events); 
+      mem->nfilled = beacon_wait_for_and_read_multiple_events(device, &mem->headers, &mem->events); 
     }
-    nuphase_buf_commit(acq_buffer); // we filled it 
+    beacon_buf_commit(acq_buffer); // we filled it 
   }
 
   return 0; 
@@ -243,8 +243,8 @@ void * acq_thread(void *v)
 
 static struct
 {
-  uint16_t * buf[NP_NUM_BEAMS]; 
-  uint32_t sum[NP_NUM_BEAMS]; 
+  uint16_t * buf[BN_NUM_BEAMS]; 
+  uint32_t sum[BN_NUM_BEAMS]; 
   size_t sz; 
   size_t i; 
 } fs_avg = { .buf = {0}, .sum={0}, .sz = 0, .i = 0 }; 
@@ -256,7 +256,7 @@ static void fs_avg_init(int n)
 {
   int ibeam = 0;
 
-  for (ibeam = 0; ibeam < NP_NUM_BEAMS; ibeam++)
+  for (ibeam = 0; ibeam < BN_NUM_BEAMS; ibeam++)
   {
     fs_avg.buf[ibeam] = calloc(n * sizeof(*fs_avg.buf[ibeam]),1); 
     fs_avg.sum[ibeam] = 0;
@@ -266,10 +266,10 @@ static void fs_avg_init(int n)
  fs_avg.i = 0; 
 }
 
-static void fs_avg_add(const nuphase_status_t *st) 
+static void fs_avg_add(const beacon_status_t *st) 
 {
   int ibeam = 0; 
-  for (ibeam = 0; ibeam < NP_NUM_BEAMS; ibeam++)
+  for (ibeam = 0; ibeam < BN_NUM_BEAMS; ibeam++)
   {
     uint16_t val = st->beam_scalers[SCALER_FAST][ibeam]; 
     fs_avg.sum[ibeam] -= fs_avg.buf[ibeam][fs_avg.i % fs_avg.sz];
@@ -289,7 +289,7 @@ static void fs_avg_print(FILE * f)
 {
   int ibeam;
   fprintf(f,"Running average of %zu fast scalers:\n\t", fs_avg.i < fs_avg.sz ? fs_avg.i : fs_avg.sz); 
-  for (ibeam = 0; ibeam < NP_NUM_BEAMS; ibeam++) 
+  for (ibeam = 0; ibeam < BN_NUM_BEAMS; ibeam++) 
   {
     fprintf(f,"%0.4g  ", fs_avg_get(ibeam) ); 
   }
@@ -323,7 +323,7 @@ void * monitor_thread(void *v)
   struct timespec last_mon = { .tv_sec = 0, .tv_nsec = 0}; //dont' read scalers yet! 
 
   // turn off verification, a hacky work around for now...
-  nuphase_enable_verification_mode(device, 0);
+  beacon_enable_verification_mode(device, 0);
 
   // the phased trigger status, so that we can turn it on or off as appropriate
   // start as undefined
@@ -349,19 +349,19 @@ void * monitor_thread(void *v)
         clock_gettime(CLOCK_MONOTONIC, &now); 
         if (timespec_difference_float(&now,&start) > config.secs_before_phased_trigger)
         {
-          nuphase_phased_trigger_readout(device, 1); 
+          beacon_phased_trigger_readout(device, 1); 
           phased_trigger_status = 1; 
         }
       }
       else
       {
-	nuphase_phased_trigger_readout(device, 1); 
+	beacon_phased_trigger_readout(device, 1); 
 	phased_trigger_status = 1; 
       }
     }
     else if (!config.enable_phased_trigger && phased_trigger_status == 1)
     {
-      nuphase_phased_trigger_readout(device, 0); 
+      beacon_phased_trigger_readout(device, 0); 
       phased_trigger_status = 0; 
     }
 
@@ -377,16 +377,16 @@ void * monitor_thread(void *v)
     if (config.monitor_interval &&  diff_mon > config.monitor_interval)
     {
       monitor_buffer_t mb; 
-      nuphase_status_t *st = &mb.status;
+      beacon_status_t *st = &mb.status;
 
-      nuphase_read_status(device, st, MASTER); 
- //     nuphase_status_print(stdout,st); 
+      beacon_read_status(device, st, MASTER); 
+ //     beacon_status_print(stdout,st); 
 
       int ibeam; 
       uint32_t dont_set = 0; 
       if (!config.use_fixed_thresholds) fs_avg_add(st); 
 
-      for (ibeam = 0; ibeam < NP_NUM_BEAMS; ibeam++)
+      for (ibeam = 0; ibeam < BN_NUM_BEAMS; ibeam++)
       {
 
         if (config.use_fixed_thresholds) 
@@ -407,13 +407,13 @@ void * monitor_thread(void *v)
         ///// REVISIT THIS 
         ///// We need to figure out how to use both the fast and slow scalers
         ///// For now, take a weighted average of the fast and slow scalers to determine the rate. 
-        double measured_slow = ((double) st->beam_scalers[SCALER_SLOW][ibeam]) / NP_SCALER_TIME(SCALER_SLOW); 
-        double measured_fast = fs_avg_get(ibeam) / NP_SCALER_TIME(SCALER_FAST); 
+        double measured_slow = ((double) st->beam_scalers[SCALER_SLOW][ibeam]) / BN_SCALER_TIME(SCALER_SLOW); 
+        double measured_fast = fs_avg_get(ibeam) / BN_SCALER_TIME(SCALER_FAST); 
         double measured =  (config.slow_scaler_weight * measured_slow + config.fast_scaler_weight * measured_fast) / (config.slow_scaler_weight + config.fast_scaler_weight); 
 
         if (config.subtract_gated) 
         {
-          double measured_gated_slow = ((double) st->beam_scalers[SCALER_SLOW_GATED][ibeam]) / NP_SCALER_TIME(SCALER_SLOW_GATED); 
+          double measured_gated_slow = ((double) st->beam_scalers[SCALER_SLOW_GATED][ibeam]) / BN_SCALER_TIME(SCALER_SLOW_GATED); 
           measured -= measured_gated_slow; 
         }
 
@@ -452,19 +452,19 @@ void * monitor_thread(void *v)
       }
 
       //apply the thresholds 
-      nuphase_set_thresholds(device, mb.thresholds,dont_set); 
+      beacon_set_thresholds(device, mb.thresholds,dont_set); 
       
       //copy over the current control status 
       if (!config.use_fixed_thresholds) memcpy(&mb.control, &control, sizeof(control)); 
 
-      nuphase_buf_push(mon_buffer, &mb);
+      beacon_buf_push(mon_buffer, &mb);
       memcpy(&last_mon,&now, sizeof(now)); 
       diff_mon = 0; 
     }
 
     if (config.sw_trigger_interval && diff_swtrig > config.sw_trigger_interval)
     {
-      nuphase_sw_trigger(device); 
+      beacon_sw_trigger(device); 
       memcpy(&last_sw_trig,&now, sizeof(now)); 
       diff_swtrig = 0;
     }
@@ -525,10 +525,10 @@ void copy_configs()
   char bigbuf[1024];
   if (!output_dir) return; 
 
-  nuphase_program_t prog;
-  for (prog = NUPHASE_STARTUP; prog <= NUPHASE_COPY; prog++)
+  beacon_program_t prog;
+  for (prog = BEACON_STARTUP; prog <= BEACON_COPY; prog++)
   {
-    nuphase_get_cfg_file(&cfgpath, prog); 
+    beacon_get_cfg_file(&cfgpath, prog); 
     snprintf(bigbuf,sizeof(bigbuf), "cp --backup=simple %s %s/cfg", cfgpath, output_dir); 
     system(bigbuf); 
   }
@@ -557,12 +557,12 @@ void * write_thread(void *v)
   acq_buffer_t *events= 0; 
   monitor_buffer_t *mon= 0;
 
-  nuphase_status_t * last_status = (saved_status && saved_status != MAP_FAILED)  ? saved_status : malloc(sizeof(nuphase_status_t)); 
+  beacon_status_t * last_status = (saved_status && saved_status != MAP_FAILED)  ? saved_status : malloc(sizeof(beacon_status_t)); 
 
   pid_state_t last_pid; 
   pid_state_init(&last_pid,-1,-1,-1); 
 
-  nuphase_read_status(device, last_status,MASTER); 
+  beacon_read_status(device, last_status,MASTER); 
 
   
   int num_events = 0; 
@@ -602,18 +602,18 @@ void * write_thread(void *v)
     int have_data= 0; 
     int have_status = 0;
     
-    size_t occupancy = nuphase_buf_occupancy(acq_buffer); 
-    if (nuphase_buf_occupancy(acq_buffer))
+    size_t occupancy = beacon_buf_occupancy(acq_buffer); 
+    if (beacon_buf_occupancy(acq_buffer))
     {
-        events = nuphase_buf_pop(acq_buffer, events); 
+        events = beacon_buf_pop(acq_buffer, events); 
         num_events += events->nfilled; 
         ntotal_events += events->nfilled;
         have_data=1;
     }
 
-    if (nuphase_buf_occupancy(mon_buffer)) 
+    if (beacon_buf_occupancy(mon_buffer)) 
     {
-      mon = nuphase_buf_pop(mon_buffer, mon); 
+      mon = beacon_buf_pop(mon_buffer, mon); 
       have_status=1; 
     }
     
@@ -625,7 +625,7 @@ void * write_thread(void *v)
       printf("  write rate:  %g Hz\n", (num_events == 0) ? 0. :  ((float) num_events) / (now - last_print_out)); 
       printf("  write buffer occupancy: %zu \n", occupancy); 
       if (!config.use_fixed_thresholds) fs_avg_print(stdout); 
-      nuphase_status_print(stdout, last_status); 
+      beacon_status_print(stdout, last_status); 
       if (!config.use_fixed_thresholds) pid_state_print(stdout, &last_pid); 
       last_print_out = now; 
       num_events = 0;
@@ -676,8 +676,8 @@ void * write_thread(void *v)
           header_file_size = 0; 
         }
        
-        nuphase_event_gzwrite(data_file, &events->events[j]); 
-        nuphase_header_gzwrite(header_file, &events->headers[j]); 
+        beacon_event_gzwrite(data_file, &events->events[j]); 
+        beacon_header_gzwrite(header_file, &events->headers[j]); 
         data_file_size++; 
         header_file_size++; 
       }
@@ -698,17 +698,17 @@ void * write_thread(void *v)
       if (!config.use_fixed_thresholds) memcpy(&last_pid, &mon->control, sizeof(last_pid)); 
 
       //update the mmaped file if necessary 
-      if ( saved_status == last_status) msync(saved_status, sizeof(nuphase_status_t),MS_ASYNC); 
+      if ( saved_status == last_status) msync(saved_status, sizeof(beacon_status_t),MS_ASYNC); 
 
 
       //write out the file 
-      nuphase_status_gzwrite(status_file, &mon->status); 
+      beacon_status_gzwrite(status_file, &mon->status); 
 
       status_file_size++; 
     }
     
     //had data, so sleep just a little (unless occupancy is too high) 
-    if (nuphase_buf_occupancy(acq_buffer) < config.buffer_capacity/3)  usleep(25000);  //25 ms 
+    if (beacon_buf_occupancy(acq_buffer) < config.buffer_capacity/3)  usleep(25000);  //25 ms 
   }
 
   if (last_status != saved_status)  free(last_status); 
@@ -724,7 +724,7 @@ void fatal()
 
   //cancel any waits 
   if (device) 
-    nuphase_cancel_wait(device); 
+    beacon_cancel_wait(device); 
 
 }
 
@@ -751,51 +751,51 @@ const char * tmp_run_file = "/tmp/.runfile";
  * twice for device things that may be changed on a reread */ 
 static int configure_device() 
 {
-  nuphase_set_spi_clock(device, config.spi_clock); 
-  nuphase_set_buffer_length(device, config.waveform_length); 
+  beacon_set_spi_clock(device, config.spi_clock); 
+  beacon_set_buffer_length(device, config.waveform_length); 
 
   //setup the external trigger
-  nuphase_trigger_output_config_t trigo; 
-  nuphase_get_trigger_output(device,&trigo); 
+  beacon_trigger_output_config_t trigo; 
+  beacon_get_trigger_output(device,&trigo); 
   trigo.enable = config.enable_trigout; 
   trigo.width = config.trigout_width; 
-  nuphase_configure_trigger_output(device,trigo); 
+  beacon_configure_trigger_output(device,trigo); 
 
-  nuphase_ext_input_config_t trigi; 
+  beacon_ext_input_config_t trigi; 
 
-  nuphase_get_ext_trigger_in(device,&trigi); 
+  beacon_get_ext_trigger_in(device,&trigi); 
   trigi.use_as_trigger = config.enable_extin; 
-  nuphase_configure_ext_trigger_in(device,trigi); 
+  beacon_configure_ext_trigger_in(device,trigi); 
 
 
   //set up the calpulser
-  nuphase_calpulse(device,config.calpulser_state); 
+  beacon_calpulse(device,config.calpulser_state); 
 
   //set up the pretrigger
-  nuphase_set_pretrigger(device, (uint8_t) config.pretrigger & 0xf);
+  beacon_set_pretrigger(device, (uint8_t) config.pretrigger & 0xf);
 
   //set up the trigger delays 
-  nuphase_set_trigger_delays(device, config.trig_delays);
+  beacon_set_trigger_delays(device, config.trig_delays);
 
   //set the trigger polarization
-  nuphase_set_trigger_polarization(device, config.trigger_polarization);
+  beacon_set_trigger_polarization(device, config.trigger_polarization);
 
   /* //enable the trigger, if desired */
-  /* nuphase_set_phased_trigger(device, config.enable_phased_trigger); */
+  /* beacon_set_phased_trigger(device, config.enable_phased_trigger); */
   
 
   if (config.apply_attenuations)
   {
-    nuphase_set_attenuation(device, config.attenuation, 0); 
+    beacon_set_attenuation(device, config.attenuation, 0); 
   }
 
-  nuphase_set_trigger_mask(device, config.trigger_mask); 
-  nuphase_set_channel_mask(device, config.channel_mask); 
+  beacon_set_trigger_mask(device, config.trigger_mask); 
+  beacon_set_channel_mask(device, config.channel_mask); 
 
-  nuphase_set_poll_interval(device, config.poll_usecs); 
+  beacon_set_poll_interval(device, config.poll_usecs); 
 
-  nuphase_set_trigger_path_low_pass(device, config.enable_low_pass_to_trigger); 
-  nuphase_set_dynamic_masking(device, config.enable_dynamic_masking, config.dynamic_masking_threshold, config.dynamic_masking_holdoff); 
+  beacon_set_trigger_path_low_pass(device, config.enable_low_pass_to_trigger); 
+  beacon_set_dynamic_masking(device, config.enable_dynamic_masking, config.dynamic_masking_threshold, config.dynamic_masking_holdoff); 
 
  
   return 0; 
@@ -845,7 +845,7 @@ static int setup()
     {
       fprintf(stderr,"Alignment not successful. Trying a reset.\n"); 
       //try to do a restart and try again
-      nuphase_reboot_fpga_power(1,20); 
+      beacon_reboot_fpga_power(1,20); 
 
       if (start_config.reconfigure_fpga_cmd)
       {
@@ -871,7 +871,7 @@ static int setup()
 
   //open the devices and configure properly
   // the gpio state should already have been set 
-  device = nuphase_open(config.spi_device, 0, 0, 1); 
+  device = beacon_open(config.spi_device, 0, 0, 1); 
 
 
   if (!device)
@@ -904,18 +904,18 @@ static int setup()
 
       // If it's not the right size (either 0, or maybe an old version of the struct,
       // truncate it) 
-      if (file_size != sizeof(nuphase_status_t))
+      if (file_size != sizeof(beacon_status_t))
       {
-        ftruncate(status_save_fd, sizeof(nuphase_status_t)); 
+        ftruncate(status_save_fd, sizeof(beacon_status_t)); 
       }
 
       //mmap it to save_status
-      saved_status = mmap(0, sizeof(nuphase_status_t), PROT_READ | PROT_WRITE, MAP_SHARED, status_save_fd, 0); 
+      saved_status = mmap(0, sizeof(beacon_status_t), PROT_READ | PROT_WRITE, MAP_SHARED, status_save_fd, 0); 
 
       // if successful and right size, set the thresholds 
-      if (saved_status!=MAP_FAILED && file_size == sizeof(nuphase_status_t))
+      if (saved_status!=MAP_FAILED && file_size == sizeof(beacon_status_t))
       {
-        nuphase_set_thresholds(device, saved_status->trigger_thresholds, 0); 
+        beacon_set_thresholds(device, saved_status->trigger_thresholds, 0); 
       }
     }
   }
@@ -923,24 +923,24 @@ static int setup()
   uint64_t run64 = run_number; 
 
   //Set event number offset
-  nuphase_set_readout_number_offset(device, run64 * 1000000000); 
+  beacon_set_readout_number_offset(device, run64 * 1000000000); 
 
   configure_device(); 
 
   //set up the beamforming trigger 
   //Right now, this will just always be on. 
-  /* nuphase_trigger_enable_t slave_enables = nuphase_get_trigger_enables(device,SLAVE);  */
+  /* beacon_trigger_enable_t slave_enables = beacon_get_trigger_enables(device,SLAVE);  */
   /* slave_enables.enable_beamforming = 1;  */
-  /* nuphase_set_trigger_enables(device, slave_enables, SLAVE);  */
+  /* beacon_set_trigger_enables(device, slave_enables, SLAVE);  */
 
-  nuphase_trigger_enable_t master_enables = nuphase_get_trigger_enables(device,MASTER); 
+  beacon_trigger_enable_t master_enables = beacon_get_trigger_enables(device,MASTER); 
   master_enables.enable_beamforming = 1;
-  nuphase_set_trigger_enables(device, master_enables, MASTER); 
+  beacon_set_trigger_enables(device, master_enables, MASTER); 
  
 
   // set up the buffers
-  acq_buffer = nuphase_buf_init( config.buffer_capacity, sizeof(acq_buffer_t)); 
-  mon_buffer = nuphase_buf_init( config.buffer_capacity, sizeof(monitor_buffer_t)); 
+  acq_buffer = beacon_buf_init( config.buffer_capacity, sizeof(acq_buffer_t)); 
+  mon_buffer = beacon_buf_init( config.buffer_capacity, sizeof(monitor_buffer_t)); 
 
 
   // set up the threads 
@@ -969,22 +969,22 @@ int teardown()
   pthread_join(the_wri_thread,0); 
 
   //Turn off calpulser 
-  nuphase_calpulse(device,0); 
+  beacon_calpulse(device,0); 
 
   //optionally, turn off the phased trigger output 
-  nuphase_trigger_output_config_t trigo; 
-  nuphase_get_trigger_output(device,&trigo); 
+  beacon_trigger_output_config_t trigo; 
+  beacon_get_trigger_output(device,&trigo); 
   trigo.enable = trigo.enable && !config.disable_trigout_on_exit; 
-  nuphase_configure_trigger_output(device,trigo); 
+  beacon_configure_trigger_output(device,trigo); 
 
 
-  nuphase_close(device); 
+  beacon_close(device); 
 
 
   //munmap the persistent status if necessary 
   if (saved_status != 0 && saved_status != MAP_FAILED) 
   {
-    munmap (saved_status, sizeof(nuphase_status_t));
+    munmap (saved_status, sizeof(beacon_status_t));
     close(status_save_fd); 
   }
 
@@ -1003,24 +1003,24 @@ int read_config(int first_time)
 
   if (first_time)
   {
-    nuphase_acq_config_init(&config); 
-    nuphase_start_config_init(&start_config); 
+    beacon_acq_config_init(&config); 
+    beacon_start_config_init(&start_config); 
   }
 
-  if (!nuphase_get_cfg_file(&cfgpath, NUPHASE_ACQ))
+  if (!beacon_get_cfg_file(&cfgpath, BEACON_ACQ))
   {
     printf("Using config file: %s\n", cfgpath); 
   }
 
-   if (!nuphase_get_cfg_file(&start_cfgpath, NUPHASE_STARTUP))
+   if (!beacon_get_cfg_file(&start_cfgpath, BEACON_STARTUP))
   {
     printf("Using startup config file: %s\n", start_cfgpath); 
   }
   
 
 
-  nuphase_acq_config_read( cfgpath, &config); 
-  nuphase_start_config_read(start_cfgpath, &start_config); 
+  beacon_acq_config_read( cfgpath, &config); 
+  beacon_start_config_read(start_cfgpath, &start_config); 
   pthread_mutex_unlock(&config_lock); 
 
   pid_state_init(&control, config.k_p, config.k_i, config.k_d); 

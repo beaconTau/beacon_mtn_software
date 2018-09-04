@@ -1,7 +1,7 @@
 #include <stdio.h> 
 #include <string.h>
-#include "nuphase-cfg.h" 
-#include "nuphase-common.h" 
+#include "beacon-cfg.h" 
+#include "beacon-common.h" 
 #include <fcntl.h> 
 #include <sys/mman.h> 
 #include <sys/stat.h>
@@ -16,12 +16,12 @@
  */ 
 
 
-static nuphase_hk_cfg_t cfg; 
+static beacon_hk_cfg_t cfg; 
 static char * config_file; 
 
 
 static volatile int stop = 0; 
-static nuphase_hk_t * the_hk = 0;  
+static beacon_hk_t * the_hk = 0;  
 
 static int shared_fd = 0; 
 
@@ -35,7 +35,7 @@ static int open_shared_fd()
     return 1; 
   }
 
-  if (ftruncate(shared_fd, sizeof(nuphase_hk_t))) 
+  if (ftruncate(shared_fd, sizeof(beacon_hk_t))) 
   {
 
     fprintf(stderr,"Could not resize shared memory region %s\n", cfg.shm_name); 
@@ -44,7 +44,7 @@ static int open_shared_fd()
     return 1; 
   }
 
-   the_hk = mmap(0, sizeof(nuphase_hk_t), PROT_READ | PROT_WRITE, MAP_SHARED, shared_fd, 0); 
+   the_hk = mmap(0, sizeof(beacon_hk_t), PROT_READ | PROT_WRITE, MAP_SHARED, shared_fd, 0); 
 
    return shared_fd == 0; 
 }
@@ -54,7 +54,7 @@ static int read_config()
 
   char * current_shm = strdupa(cfg.shm_name); 
 
-  int ret =  nuphase_hk_config_read(config_file, &cfg); 
+  int ret =  beacon_hk_config_read(config_file, &cfg); 
 
   if (!shared_fd || strcmp(current_shm, cfg.shm_name))
   {
@@ -132,7 +132,7 @@ int main(int nargs, char ** args)
 
 
   /** Initialize the configuration */ 
-  nuphase_hk_config_init(&cfg); 
+  beacon_hk_config_init(&cfg); 
 
   /* If we were launched with an argument, use it as the config file */ 
   if (nargs > 1)
@@ -141,7 +141,7 @@ int main(int nargs, char ** args)
   }
   else 
   {
-    nuphase_get_cfg_file(&config_file, NUPHASE_HK); 
+    beacon_get_cfg_file(&config_file, BEACON_HK); 
   }
 
 
@@ -162,7 +162,7 @@ int main(int nargs, char ** args)
 
   while (!stop) 
   {
-    nuphase_hk(the_hk) ; 
+    beacon_hk(the_hk) ; 
 
     time_t now = time(0); 
 
@@ -175,9 +175,9 @@ int main(int nargs, char ** args)
       last = now; 
     }
 
-    nuphase_hk_gzwrite(outf, the_hk);
+    beacon_hk_gzwrite(outf, the_hk);
     if (cfg.print_to_screen)
-      nuphase_hk_print(stdout, the_hk); 
+      beacon_hk_print(stdout, the_hk); 
     sleep(cfg.interval); 
   }
 
