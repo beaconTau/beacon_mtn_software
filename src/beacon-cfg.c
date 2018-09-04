@@ -265,7 +265,7 @@ void beacon_acq_config_init ( beacon_acq_cfg_t * c)
   c->run_file = "/beacon/runfile" ; 
   c->status_save_file = "/beacon/last.st.bin"; 
   c->output_directory = "/data/" ; 
-  c->alignment_command = "cd /home/beacon/beacon_python/;  python align_adcs.py -m" ;
+  c->alignment_command = "cd /home/nuphase/nuphase_python/;  python align_adcs_beacon.py" ;
 
   c->load_thresholds_from_status_file = 1; 
 
