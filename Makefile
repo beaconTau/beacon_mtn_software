@@ -33,7 +33,7 @@ PROGRAMS := $(addprefix $(BINDIR)/, beacon-acq beacon-startup beacon-hk beacon-c
 																		beacon-set-saved-thresholds)
 INCLUDES := $(addprefix $(INCLUDEDIR)/, $(shell ls $(INCLUDEDIR)))
 
-all: $(PROGRAMS) 
+all: $(PROGRAMS) etc/beacon.cfg 
 
 etc/beacon.cfg: 
 	mkdir -p etc 
