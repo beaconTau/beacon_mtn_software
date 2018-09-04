@@ -1,27 +1,27 @@
 /* 
- * \file nuphase-startup.c
+ * \file beacon-startup.c
  *
  * Startup program. This does absolutely nothing except call another command. 
  *
  **/ 
 
 
-#include "nuphasehk.h" 
-#include "nuphase-cfg.h" 
-#include "nuphase-common.h" 
+#include "beaconhk.h" 
+#include "beacon-cfg.h" 
+#include "beacon-common.h" 
 #include <stdio.h> 
 #include <string.h> 
 #include <signal.h>
 
 
-static nuphase_start_cfg_t cfg; 
+static beacon_start_cfg_t cfg; 
 static int read_config()
 {
   char * config_file; 
-  if (!nuphase_get_cfg_file(&config_file, NUPHASE_STARTUP))
+  if (!beacon_get_cfg_file(&config_file, BEACON_STARTUP))
   {
     printf("Using config file: %s\n", config_file); 
-    nuphase_start_config_read(config_file, &cfg); 
+    beacon_start_config_read(config_file, &cfg); 
     free(config_file);
   }
 
@@ -58,7 +58,7 @@ int main (int nargs, char ** args)
 
 
   //read the config file
-  nuphase_start_config_init(&cfg); 
+  beacon_start_config_init(&cfg); 
   read_config(); 
   
 
@@ -79,17 +79,17 @@ int main (int nargs, char ** args)
     out_name = strdup(buf); 
   }
 
-  nuphase_hk_t hk; 
+  beacon_hk_t hk; 
 
 
   printf("Final state: \n"); 
 
-  nuphase_hk(&hk); 
-  nuphase_hk_print(stdout,&hk); 
+  beacon_hk(&hk); 
+  beacon_hk_print(stdout,&hk); 
 
   if (out) 
   {
-    nuphase_hk_gzwrite(out, &hk); 
+    beacon_hk_gzwrite(out, &hk); 
   }
 
 
@@ -111,8 +111,8 @@ int main (int nargs, char ** args)
 
   if (out) //take another reading here 
   {
-    nuphase_hk(&hk); 
-    nuphase_hk_gzwrite(out, &hk); 
+    beacon_hk(&hk); 
+    beacon_hk_gzwrite(out, &hk); 
     do_close(out, out_name); 
   }
 

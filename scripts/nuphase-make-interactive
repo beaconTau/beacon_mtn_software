@@ -1,5 +1,5 @@
 #! /bin/sh 
-echo Setting up computer in interactive mode. Will NOT start nuphase startup on boot. To undo, run nuphase-make-autonomous
+echo Setting up computer in interactive mode. Will NOT start beacon startup on boot. To undo, run beacon-make-autonomous
 
 systemctl set-default multi-user.target
 

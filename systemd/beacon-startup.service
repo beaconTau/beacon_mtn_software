@@ -3,17 +3,17 @@
 
 [Unit] 
 Description=Wait until it is warm enough to turn on FPGA
-Before=nuphase-acq.service nuphase-hk.service nuphase-copy.service 
+Before=beacon-acq.service beacon-hk.service beacon-copy.service 
 #Wants=dev-ttyUSB0.device
 #After=dev-ttyUSB0.device
 
 
 
 [Service] 
-EnvironmentFile=/etc/nuphase.cfg 
+EnvironmentFile=/etc/beacon.cfg 
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/bin/sh -c "exec ${NUPHASE_PATH}/nuphase-startup"
+ExecStart=/bin/sh -c "exec ${BEACON_PATH}/beacon-startup"
 
 [Install] 
-WantedBy=nuphase.target 
+WantedBy=beacon.target 

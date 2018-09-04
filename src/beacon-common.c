@@ -1,4 +1,4 @@
-#include "nuphase-common.h" 
+#include "beacon-common.h" 
 #include <stdio.h> 
 #include <time.h> 
 #include <stdlib.h> 
@@ -16,20 +16,20 @@ float timespec_difference_float(const struct timespec * a, const struct timespec
 } 
 
 
-int nuphase_get_cfg_file(char ** name, nuphase_program_t p) 
+int beacon_get_cfg_file(char ** name, beacon_program_t p) 
 {
   switch (p) 
   {
-    case NUPHASE_STARTUP: 
+    case BEACON_STARTUP: 
       asprintf(name, "%s/%s", getenv(CONFIG_DIR_ENV) ?: "cfg" , CONFIG_DIR_STARTUP_NAME); 
       break;
-    case NUPHASE_HK: 
+    case BEACON_HK: 
       asprintf(name, "%s/%s", getenv(CONFIG_DIR_ENV) ?: "cfg" , CONFIG_DIR_HK_NAME); 
       break;
-    case NUPHASE_ACQ: 
+    case BEACON_ACQ: 
       asprintf(name, "%s/%s", getenv(CONFIG_DIR_ENV) ?: "cfg" , CONFIG_DIR_ACQ_NAME); 
       break;
-    case NUPHASE_COPY: 
+    case BEACON_COPY: 
       asprintf(name, "%s/%s", getenv(CONFIG_DIR_ENV) ?: "cfg" , CONFIG_DIR_COPY_NAME); 
       break;
     default: 

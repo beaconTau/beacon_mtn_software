@@ -1,0 +1,13 @@
+[Unit]
+Description=Record Beacon data
+Wants=beacon-copy.service beacon-hk.service 
+Requires=beacon-startup.service 
+
+[Service] 
+EnvironmentFile=/etc/beacon.cfg
+Restart=always 
+ExecStart=/bin/sh -c "exec ${BEACON_PATH}/beacon-acq"
+ExecReload=/bin/kill -USR1 $MAINPID
+
+[Install]
+WantedBy=beacon.target 

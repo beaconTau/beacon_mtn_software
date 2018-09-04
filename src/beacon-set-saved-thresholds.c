@@ -1,8 +1,8 @@
 #include <stdio.h> 
 #include <stdlib.h> 
-#include "nuphase.h" 
-#include "nuphase-cfg.h" 
-#include "nuphase-common.h" 
+#include "beacon.h" 
+#include "beacon-cfg.h" 
+#include "beacon-common.h" 
 
 /** This program overwrites 
  *  the saved status file for Acqd, allowing you to "seed" 
@@ -10,25 +10,25 @@
 
 int main (int nargs, char ** args) 
 {
-  if (nargs != 2 && nargs != NP_NUM_BEAMS +1) 
+  if (nargs != 2 && nargs != BN_NUM_BEAMS +1) 
   {
-    fprintf(stderr,"Usage:\tnuphase-set-saved-thresolds thresh\n\t\tnuphase-set-saved-thresholds thresh0 thresh1 thresh2 thresh3 ... thresh14\n"); 
+    fprintf(stderr,"Usage:\tbeacon-set-saved-thresolds thresh\n\t\tbeacon-set-saved-thresholds thresh0 thresh1 thresh2 thresh3 ... thresh14\n"); 
     return 1; 
   }
 
-  nuphase_acq_cfg_t cfg; 
-  nuphase_acq_config_init(&cfg); 
+  beacon_acq_cfg_t cfg; 
+  beacon_acq_config_init(&cfg); 
   char * cfgpath; 
-  if (!nuphase_get_cfg_file(&cfgpath, NUPHASE_ACQ))
+  if (!beacon_get_cfg_file(&cfgpath, BEACON_ACQ))
   {
-    nuphase_acq_config_read(cfgpath, &cfg);
+    beacon_acq_config_read(cfgpath, &cfg);
   }
 
-  nuphase_status_t save; 
+  beacon_status_t save; 
   
   int thresh = atoi(args[1]); 
   int ibeam ;
-  for (ibeam = 0; ibeam < NP_NUM_BEAMS; ibeam++)
+  for (ibeam = 0; ibeam < BN_NUM_BEAMS; ibeam++)
   {
     if (nargs > 2 && ibeam > 0) 
     {

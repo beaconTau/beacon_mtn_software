@@ -1,5 +1,5 @@
-#ifndef _NUPHASE_COMMON_H 
-#define _NUPHASE_COMMON_H 
+#ifndef _BEACON_COMMON_H 
+#define _BEACON_COMMON_H 
 #include <time.h> 
 #include <zlib.h>
 
@@ -11,16 +11,16 @@
 float timespec_difference_float(const struct timespec * a, const struct timespec * b); 
 
 
-typedef enum nuphase_program
+typedef enum beacon_program
 {
-  NUPHASE_STARTUP, 
-  NUPHASE_HK, 
-  NUPHASE_ACQ, 
-  NUPHASE_COPY 
-}  nuphase_program_t; 
+  BEACON_STARTUP, 
+  BEACON_HK, 
+  BEACON_ACQ, 
+  BEACON_COPY 
+}  beacon_program_t; 
 
 
-#define CONFIG_DIR_ENV "NUPHASE_CONFIG_DIR" 
+#define CONFIG_DIR_ENV "BEACON_CONFIG_DIR" 
 #define CONFIG_DIR_ACQ_NAME "acq.cfg" 
 #define CONFIG_DIR_COPY_NAME "copy.cfg" 
 #define CONFIG_DIR_HK_NAME "hk.cfg" 
@@ -28,7 +28,7 @@ typedef enum nuphase_program
 #define CONFIG_REREAD_SIGNAL SIGUSR1; 
 
 
-int nuphase_get_cfg_file(char ** name, nuphase_program_t program); 
+int beacon_get_cfg_file(char ** name, beacon_program_t program); 
 
 
 /* a bunch of directory making things */ 
