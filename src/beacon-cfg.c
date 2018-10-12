@@ -292,6 +292,7 @@ void beacon_acq_config_init ( beacon_acq_cfg_t * c)
   c->buffer_capacity = 256; 
   c->monitor_interval = 1.0; 
   c->sw_trigger_interval = 1; 
+  c->randomize_sw_trigger = 0; 
   c->print_interval = 10; 
   c->poll_usecs = 500; 
 
@@ -406,6 +407,7 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
   c->max_threshold_increase = tmp; 
   config_lookup_float(&cfg,"control.monitor_interval",&c->monitor_interval); 
   config_lookup_float(&cfg,"control.sw_trigger_interval",&c->sw_trigger_interval); 
+  config_lookup_int(&cfg,"control.randomize_sw_trigger",&c->randomize_sw_trigger); 
   config_lookup_int(&cfg,"control.enable_phased_trigger",&c->enable_phased_trigger); 
   config_lookup_pol(&cfg,"control.trigger_polarization",&c->trigger_polarization);  
   config_lookup_int(&cfg,"control.secs_before_phased_trigger",&c->secs_before_phased_trigger); 
@@ -415,6 +417,7 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
   config_lookup_int(&cfg,"control.subtract_gated",&c->subtract_gated); 
   config_lookup_int(&cfg,"realtime_priority",&c->realtime_priority); 
   config_lookup_int(&cfg,"poll_usecs",&tmp); 
+  c->poll_usecs = tmp; 
   config_lookup_int(&cfg,"control.enable_dynamic_masking",&c->enable_dynamic_masking); 
   config_lookup_int(&cfg,"control.use_fixed_thresholds",&c->use_fixed_thresholds); 
   config_lookup_int(&cfg,"control.dynamic_masking_threshold",&tmp);
@@ -422,7 +425,6 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
   config_lookup_int(&cfg,"control.dynamic_masking_holdoff",&tmp); 
   c->dynamic_masking_holdoff = tmp; 
   config_lookup_int(&cfg,"device.enable_low_pass_to_trigger",&c->enable_low_pass_to_trigger); 
-  c->poll_usecs = tmp; 
 
 
 
@@ -587,6 +589,9 @@ int beacon_acq_config_write(const char * fi, const beacon_acq_cfg_t * c)
 
   fprintf(f,"   // software trigger interval (in seconds)\n"); 
   fprintf(f,"   sw_trigger_interval = %g;\n\n", c->sw_trigger_interval); 
+
+  fprintf(f,"   // randomize sw trigger interval (using exponential distribution)\n"); 
+  fprintf(f,"   randomize_sw_trigger = %d;\n\n", c->randomize_sw_trigger); 
 
   fprintf(f,"   //enable the phased trigger readout\n"); 
   fprintf(f,"   enable_phased_trigger = %d;\n\n",c->enable_phased_trigger); 
