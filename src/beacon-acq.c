@@ -380,8 +380,8 @@ void * monitor_thread(void *v)
       }
       else
       {
-	beacon_phased_trigger_readout(device, 1); 
-	phased_trigger_status = 1; 
+        beacon_phased_trigger_readout(device, 1); 
+        phased_trigger_status = 1; 
       }
     }
     else if (!config.enable_phased_trigger && phased_trigger_status == 1)
@@ -466,9 +466,9 @@ void * monitor_thread(void *v)
 
         mb.thresholds[ibeam] = st->trigger_thresholds[ibeam] + dthreshold;
 
-	if(mb.thresholds[ibeam] < config.min_threshold){
-	  mb.thresholds[ibeam] = config.min_threshold;
-	}
+        if(mb.thresholds[ibeam] < config.min_threshold){
+          mb.thresholds[ibeam] = config.min_threshold;
+        }
 
 //        printf("BEAM %d\n", ibeam); 
 //        printf("  slow scaler: %f, fast_scaler: %f, avg: %f\n", measured_slow, measured_fast, measured); 
