@@ -417,6 +417,7 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
   config_lookup_int(&cfg,"control.subtract_gated",&c->subtract_gated); 
   config_lookup_int(&cfg,"realtime_priority",&c->realtime_priority); 
   config_lookup_int(&cfg,"poll_usecs",&tmp); 
+  c->poll_usecs = tmp; 
   config_lookup_int(&cfg,"control.enable_dynamic_masking",&c->enable_dynamic_masking); 
   config_lookup_int(&cfg,"control.use_fixed_thresholds",&c->use_fixed_thresholds); 
   config_lookup_int(&cfg,"control.dynamic_masking_threshold",&tmp);
@@ -424,7 +425,6 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
   config_lookup_int(&cfg,"control.dynamic_masking_holdoff",&tmp); 
   c->dynamic_masking_holdoff = tmp; 
   config_lookup_int(&cfg,"device.enable_low_pass_to_trigger",&c->enable_low_pass_to_trigger); 
-  c->poll_usecs = tmp; 
 
 
 
