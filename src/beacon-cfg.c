@@ -590,7 +590,7 @@ int beacon_acq_config_write(const char * fi, const beacon_acq_cfg_t * c)
   fprintf(f,"   // software trigger interval (in seconds)\n"); 
   fprintf(f,"   sw_trigger_interval = %g;\n\n", c->sw_trigger_interval); 
 
-  fprintf(f,"   // randomize sw trigger interval (using exponential distribution)"); 
+  fprintf(f,"   // randomize sw trigger interval (using exponential distribution)\n"); 
   fprintf(f,"   randomize_sw_trigger = %d;\n\n", c->randomize_sw_trigger); 
 
   fprintf(f,"   //enable the phased trigger readout\n"); 
