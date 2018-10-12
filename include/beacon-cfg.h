@@ -72,6 +72,9 @@ typedef struct beacon_acq_cfg
   /* SW trigger interval (in seconds) */ 
   double sw_trigger_interval; 
 
+  /* Use an exponential distribution for the sw trigger */ 
+  int randomize_sw_trigger; 
+
   // print to screen interval 
   int print_interval; 
 

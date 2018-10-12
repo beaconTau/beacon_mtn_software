@@ -18,7 +18,7 @@ BEACON_CONFIG_DIR=${PREFIX}/cfg
 
 
 CFLAGS +=-g -O2 -Iinclude -Wall -I$(LIBBEACON_DIR) -D_GNU_SOURCE
-LDFLAGS+=-L$(LIBBEACON_DIR) -lbeacon -lbeacondaq  -lz -lpthread -lconfig -lrt
+LDFLAGS+=-L$(LIBBEACON_DIR) -lbeacon -lbeacondaq  -lz -lpthread -lconfig -lrt -lm
 
 CC=gcc 
 BUILDDIR=build

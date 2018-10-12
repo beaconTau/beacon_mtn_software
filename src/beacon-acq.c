@@ -43,6 +43,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <inttypes.h> 
+#include <math.h> 
 
 
 /************** Structs /Typedefs ******************************/
@@ -301,6 +302,26 @@ static void fs_avg_print(FILE * f)
 
 
 
+static struct drand48_data sw_rand; 
+static double get_next_sw_trig_interval()
+{
+  if (!config.sw_trigger_interval) return 0; 
+  if (config.randomize_sw_trigger)
+  {
+    double u = 0; 
+    while (u==1 || u==0)  //make sure we don't have 0 or 1
+    {
+      drand48_r(&sw_rand,&u); 
+    }
+
+    return -log(u)*config.sw_trigger_interval; 
+  }
+
+  return config.sw_trigger_interval; 
+
+}
+
+
 /***********************************************************************
  * Monitor thread
  *
@@ -315,6 +336,8 @@ void * monitor_thread(void *v)
   struct timespec start; 
   clock_gettime(CLOCK_MONOTONIC, &start); 
 
+  //seed the rng for randomizing sw trigger
+  srand48_r(start.tv_nsec, &sw_rand); 
 
   // this keeps track of when we sent the last sw trigger
   struct timespec last_sw_trig = { .tv_sec = 0, .tv_nsec = 0};
@@ -328,6 +351,8 @@ void * monitor_thread(void *v)
   // the phased trigger status, so that we can turn it on or off as appropriate
   // start as undefined
   int phased_trigger_status = -1; 
+
+  double sw_trig_interval =  get_next_sw_trig_interval(); 
 
   while(!die) 
   {
@@ -462,11 +487,12 @@ void * monitor_thread(void *v)
       diff_mon = 0; 
     }
 
-    if (config.sw_trigger_interval && diff_swtrig > config.sw_trigger_interval)
+    if (sw_trig_interval && diff_swtrig > sw_trig_interval)
     {
       beacon_sw_trigger(device); 
       memcpy(&last_sw_trig,&now, sizeof(now)); 
       diff_swtrig = 0;
+      sw_trig_interval = get_next_sw_trig_interval(); 
     }
 
     //now figure out how long to sleep 
@@ -474,7 +500,7 @@ void * monitor_thread(void *v)
     float how_long_to_sleep = 0.1; //don't sleep longer than 100 ms 
 
     if (config.monitor_interval && config.monitor_interval - diff_mon  < how_long_to_sleep) how_long_to_sleep = config.monitor_interval - diff_mon; 
-    if (config.sw_trigger_interval && config.sw_trigger_interval - diff_swtrig  < how_long_to_sleep) how_long_to_sleep = config.sw_trigger_interval - diff_swtrig; 
+    if (sw_trig_interval && sw_trig_interval - diff_swtrig  < how_long_to_sleep) how_long_to_sleep = sw_trig_interval - diff_swtrig; 
 
     usleep(how_long_to_sleep * 1e6); 
   }
@@ -818,7 +844,6 @@ static int setup()
   sigaction(SIGTERM, &sa,0); 
   sigaction(SIGUSR1, &sa,0); 
   sigaction(SIGUSR2, &sa,0); 
-
 
   //Read configuration 
   read_config(1); 
