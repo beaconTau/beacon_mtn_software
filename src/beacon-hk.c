@@ -11,7 +11,7 @@
  * 
  *  - Polls housekeeping info and saves to file
  *  - also makes hk available to shared memory location 
- *  - with SIGUSR1, rereads config, also causing it to apply the power statuses. 
+ *  - with SIGUSR1, rereads config
  *
  */ 
 
@@ -55,6 +55,7 @@ static int read_config()
   char * current_shm = strdupa(cfg.shm_name); 
 
   int ret =  beacon_hk_config_read(config_file, &cfg); 
+  beacon_hk_set_mate3_address(cfg.mate3_url, cfg.mate3_port); 
 
   if (!shared_fd || strcmp(current_shm, cfg.shm_name))
   {

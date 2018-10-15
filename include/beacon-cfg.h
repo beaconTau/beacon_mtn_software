@@ -209,6 +209,8 @@ typedef struct beacon_hkd_cfg
   int max_secs_per_file; // maximum number of seconds per file. Default 600
   const char * shm_name; //shared memory name
   int print_to_screen; //1 to print to screen 
+  const char * mate3_url; 
+  int mate3_port; 
 
 } beacon_hk_cfg_t;
 

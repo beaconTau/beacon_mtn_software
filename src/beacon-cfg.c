@@ -99,6 +99,8 @@ void beacon_hk_config_init(beacon_hk_cfg_t * c)
   c->max_secs_per_file = 600; 
   c->shm_name = "/hk.bin"; 
   c->print_to_screen = 1; 
+  c->mate3_url = "162.252.89.77"; 
+  c->mate3_port = 8080; 
 }
 
 int beacon_hk_config_read(const char * file, beacon_hk_cfg_t * c) 
@@ -131,6 +133,14 @@ int beacon_hk_config_read(const char * file, beacon_hk_cfg_t * c)
   }
 
 
+  const char * mate3_str;
+  if (config_lookup_string(&cfg,"mate3_url",&mate3_str))
+  {
+    c->mate3_url = strdup(mate3_str); //memory leak 
+  }
+
+  config_lookup_int(&cfg,"mate3_port",&c->mate3_port); 
+
   config_destroy(&cfg); 
   return 0; 
 }
@@ -152,6 +162,10 @@ int beacon_hk_config_write(const char * file, const beacon_hk_cfg_t * c)
   fprintf(f, "shm_name=\"%s\";\n\n", c->shm_name); 
   fprintf(f, "//1 to print to screen\n"); 
   fprintf(f, "print_to_screen=%d;\n\n", c->print_to_screen); 
+  fprintf(f, "//mate3 address (or hostname)\n"); 
+  fprintf(f, "mate3_url=%s;\n\n", c->mate3_url); 
+  fprintf(f, "//mate3 port (or 0 for default)\n"); 
+  fprintf(f, "mate3_port=%d;\n\n", c->mate3_port); 
   fclose(f); 
 
   return 0; 
