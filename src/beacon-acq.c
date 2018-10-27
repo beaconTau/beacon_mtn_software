@@ -185,12 +185,22 @@ static void * write_thread(void * p );
  * */ 
 int main(int nargs, char ** args) 
 {
+
+
   if(setup())
   {
     return 1; 
   }
   struct timespec start; 
   clock_gettime(CLOCK_MONOTONIC_COARSE, &start); 
+
+
+  /** Keeps track of the last time we checked the power information */ 
+  struct timespec last_check_power = {.tv_sec = 0, .tv_nsec = 0}; 
+
+  /** Keeps track of how many times in a row there is no power info (battery voltage is 0) */ 
+
+  int num_no_power_info; 
 
   struct timespec now; 
   while(!die) 
@@ -200,6 +210,17 @@ int main(int nargs, char ** args)
     {
       fatal(); 
     }
+
+    /*Power checks go here  */ 
+    if ((config.auto_power_off config.auto_power_on)  && (timespec_difference_float(&now, &last_check_power) > config.power_monitor_interval))
+    {
+
+
+
+
+    }
+
+
 
     usleep(500000);  //500 ms 
     sched_yield();
@@ -1022,6 +1043,7 @@ int read_config(int first_time)
 
   char * cfgpath = 0;  
   char * start_cfgpath = 0;  
+  char * hk_cfgpath = 0;  
   
 
   pthread_mutex_lock(&config_lock); 
@@ -1041,11 +1063,19 @@ int read_config(int first_time)
   {
     printf("Using startup config file: %s\n", start_cfgpath); 
   }
+
+ 
+   if (!beacon_get_cfg_file(&hk_cfgpath, BEACON_HK))
+  {
+    printf("Using startup config file: %s\n", hk_cfgpath); 
+  }
   
+
 
 
   beacon_acq_config_read( cfgpath, &config); 
   beacon_start_config_read(start_cfgpath, &start_config); 
+  beacon_start_config_read(hk_cfgpath, &start_config); 
   pthread_mutex_unlock(&config_lock); 
 
   pid_state_init(&control, config.k_p, config.k_i, config.k_d); 
