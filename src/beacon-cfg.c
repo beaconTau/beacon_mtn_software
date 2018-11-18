@@ -365,8 +365,9 @@ void config_lookup_pol(config_t* cfg, const char* key, beacon_trigger_polarizati
       polInd++;
       polName = beacon_trigger_polarization_name((beacon_trigger_polarization_t) polInd);
       if(polName && strcmp(str, polName)==0){
-	foundMatch = 1;
-	break;
+        foundMatch = 1;
+        *pol = (beacon_trigger_polarization_t) polInd; 
+        break;
       }
     }
     while(polName != NULL);
