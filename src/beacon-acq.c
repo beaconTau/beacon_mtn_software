@@ -1,5 +1,6 @@
 /* Main Acquisition program for vPhase 
  *
+ *
  * Cosmin Deaconu <cozzyd@kicp.uchicago.edu>
  *
  *
@@ -117,6 +118,12 @@ static beacon_acq_cfg_t config;
 /** Need this to apply attenuation */
 static beacon_start_cfg_t start_config; 
 
+/** Need this to read hk */
+static beacon_hk_cfg_t hk_config; 
+
+static beacon_hk_t * the_hk = 0; 
+
+
 /* Mutex protecting the configuration */
 static pthread_mutex_t config_lock = PTHREAD_MUTEX_INITIALIZER; 
 
@@ -155,7 +162,12 @@ static volatile int die;
 
 static int run_number; 
 
+
 // this sets everything up (opens device, starts threads, signal handlers, etc. ) 
+//
+//
+const int SETUP_FAILED = 1; 
+const int SETUP_TRY_AGAIN_LATER = 2; 
 static int setup(); 
 // this cleans up 
 static int teardown(); 
@@ -187,10 +199,19 @@ int main(int nargs, char ** args)
 {
 
 
-  if(setup())
+  int setup_return = setup(); 
+
+  if (setup_return == SETUP_FAILED) 
   {
-    return 1; 
+    return 1; //this is bad
   }
+
+  if (setup_return == SETUP_TRY_AGAIN_LATER) 
+  {
+    sleep(config.try_again_sleep_amount); 
+    return 0; 
+  }
+
   struct timespec start; 
   clock_gettime(CLOCK_MONOTONIC_COARSE, &start); 
 
@@ -199,8 +220,11 @@ int main(int nargs, char ** args)
   struct timespec last_check_power = {.tv_sec = 0, .tv_nsec = 0}; 
 
   /** Keeps track of how many times in a row there is no power info (battery voltage is 0) */ 
+  int num_no_power_info = 0; 
 
-  int num_no_power_info; 
+  int must_turn_off = 0;
+ 
+
 
   struct timespec now; 
   while(!die) 
@@ -211,22 +235,63 @@ int main(int nargs, char ** args)
       fatal(); 
     }
 
+    usleep(500000);  //500 ms 
+
     /*Power checks go here  */ 
-    if ((config.auto_power_off config.auto_power_on)  && (timespec_difference_float(&now, &last_check_power) > config.power_monitor_interval))
+    if (the_hk && (config.auto_power_off || config.check_power_on)  && (timespec_difference_float(&now, &last_check_power) > config.power_monitor_interval))
     {
 
+      int must_turn_off = 0; 
 
 
+      lock_shared_hk(); 
+      int adc_current = the_hk->adc_current; 
+      float cc_voltage = the_hk->cc_batt_dV*10; 
+      float inv_voltage = the_hk->inv_batt_dV*10; 
+      unlock_shared_hk(); 
 
+      if (config.check_power_on && adc_current < config.adc_threshold_for_on) 
+      {
+        fprintf(stderr,"WARNING: was the system turned off!???"); 
+        fatal(); 
+        must_turn_off=1; //just in case... 
+
+
+      }
+
+      if (config.auto_power_off) 
+      {
+        if ( (cc_voltage = 0 || inv_voltage == 0) && ( ++num_no_power_info > config.nzero_threshold_to_turn_off))
+        {
+          must_turn_off = 1; 
+          fprintf(stderr,"max number of zero values of battery voltage exceeded! turning off!...\n"); 
+        }
+        else if (cc_voltage < config.cc_voltage_to_turn_off || inv_voltage < config.inv_voltage_to_turn_off)
+        {
+          must_turn_off = 1; 
+          fprintf(stderr,"battery voltage too low! turning off...\n"); 
+        }
+
+        if (must_turn_off) 
+        {
+          fatal();
+        }
+      }
+
+      clock_gettime(CLOCK_MONOTONIC_COARSE, &last_check_power); 
     }
 
 
 
-    usleep(500000);  //500 ms 
     sched_yield();
   }
 
-  return teardown(); 
+  int teardown_return = teardown(); 
+
+  if (must_turn_off) teardown_return += system(config.power_off_command); 
+
+  return teardown_return; 
+
 }
 
 
@@ -870,8 +935,14 @@ static int setup()
   sigaction(SIGUSR2, &sa,0); 
 
   //Read configuration 
-  read_config(1); 
+  int config_return = read_config(1); 
 
+  if (config_return == SETUP_TRY_AGAIN_LATER) 
+  {
+
+    return SETUP_TRY_AGAIN_LATER;
+
+  }
   /* open up the run number file, read the run, then increment it and save it
    * This is a bit fragile, potentially, so maybe revisit. 
    * */ 
@@ -1070,16 +1141,58 @@ int read_config(int first_time)
  
    if (!beacon_get_cfg_file(&hk_cfgpath, BEACON_HK))
   {
-    printf("Using startup config file: %s\n", hk_cfgpath); 
+    printf("Using hk config file: %s\n", hk_cfgpath); 
   }
   
 
-
-
   beacon_acq_config_read( cfgpath, &config); 
   beacon_start_config_read(start_cfgpath, &start_config); 
-  beacon_start_config_read(hk_cfgpath, &start_config); 
+  beacon_hk_config_read(hk_cfgpath, &hk_config); 
+
   pthread_mutex_unlock(&config_lock); 
+
+  //open the shared hk
+  if (first_time) 
+  {
+    int opened = open_shared_hk(&hk_config, 1, &the_hk); 
+    if (opened) 
+    {
+      fprintf(stderr, "Could not open shared hk... aborting\n"); 
+      return SETUP_FAILED; 
+    }
+  }
+
+
+  if (first_time && (config.check_power_on || config.auto_power_on || config.auto_power_off))
+  {
+    int quick_exit = 0;
+    //check if the adc current is above
+    lock_shared_hk(); 
+    if (the_hk->adc_current < config.adc_threshold_for_on)
+    {
+      quick_exit = 1; 
+
+      if (config.auto_power_on && the_hk->cc_batt_dV*10 > config.cc_voltage_to_turn_on && the_hk->inv_batt_dV*10 > config.inv_voltage_to_turn_on) 
+      {
+        fprintf(stderr," Voltages exceeded power on threshold. Will turn on...\n"); 
+        system(config.power_on_command); 
+      }
+      else
+      {
+        fprintf(stderr, "adc current is %d, below threshold of %d. Either the ADC is not on or beacon-hk is not running... Exiting.\n", the_hk->adc_current, config.adc_threshold_for_on); 
+      }
+    }
+    unlock_shared_hk(); 
+    if (quick_exit) 
+    {
+      return SETUP_TRY_AGAIN_LATER; 
+    }
+  }
+
+
+
+  ///ok, if we got this far, we'll actually start things up 
+
 
   pid_state_init(&control, config.k_p, config.k_i, config.k_d); 
 

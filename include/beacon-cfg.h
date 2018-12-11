@@ -155,6 +155,22 @@ typedef struct beacon_acq_cfg
   uint8_t dynamic_masking_holdoff; 
   int enable_low_pass_to_trigger; 
 
+  /** Power monitoring commands */ 
+  int try_again_sleep_amount; 
+  int check_power_on; 
+  int adc_threshold_for_on; 
+  int auto_power_on; 
+  int auto_power_off; 
+  int power_monitor_interval; 
+  int nzero_threshold_to_turn_off;
+  double cc_voltage_to_turn_off; 
+  double inv_voltage_to_turn_off; 
+  double cc_voltage_to_turn_on; 
+  double inv_voltage_to_turn_on; 
+
+  const char * power_off_command; 
+  const char * power_on_command; 
+
   /* Veto options */ 
   beacon_veto_options_t veto; 
 
@@ -211,6 +227,7 @@ typedef struct beacon_hkd_cfg
   const char * out_dir; //output directory for hk data 
   int max_secs_per_file; // maximum number of seconds per file. Default 600
   const char * shm_name; //shared memory name
+  const char * shm_lock_name; //shared memory lock name
   int print_to_screen; //1 to print to screen 
   const char * mate3_url; 
   int mate3_port; 

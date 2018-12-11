@@ -3,7 +3,6 @@
 #include "beacon-cfg.h" 
 #include "beacon-common.h" 
 #include <fcntl.h> 
-#include <sys/mman.h> 
 #include <sys/stat.h>
 #include <signal.h>
 
@@ -23,44 +22,18 @@ static char * config_file;
 static volatile int stop = 0; 
 static beacon_hk_t * the_hk = 0;  
 
-static int shared_fd = 0; 
 
-
-static int open_shared_fd() 
-{
-  shared_fd = shm_open(cfg.shm_name, O_CREAT | O_RDWR, 0666); 
-  if (shared_fd < 0) 
-  {
-    fprintf(stderr,"Could not open shared memory region %s\n", cfg.shm_name); 
-    return 1; 
-  }
-
-  if (ftruncate(shared_fd, sizeof(beacon_hk_t))) 
-  {
-
-    fprintf(stderr,"Could not resize shared memory region %s\n", cfg.shm_name); 
-    close(shared_fd); 
-    shared_fd = -1; 
-    return 1; 
-  }
-
-   the_hk = mmap(0, sizeof(beacon_hk_t), PROT_READ | PROT_WRITE, MAP_SHARED, shared_fd, 0); 
-
-   return shared_fd == 0; 
-}
 
 static int read_config() 
 {
 
-  char * current_shm = strdupa(cfg.shm_name); 
 
   int ret =  beacon_hk_config_read(config_file, &cfg); 
   beacon_hk_set_mate3_address(cfg.mate3_url, cfg.mate3_port); 
 
-  if (!shared_fd || strcmp(current_shm, cfg.shm_name))
+  if (!the_hk)//don't allow updating shared_hk
   {
-    if (shared_fd) close(shared_fd); 
-    return ret + open_shared_fd(); 
+    return ret + open_shared_hk(&cfg,0,&the_hk); 
   }
 
   return ret; 
@@ -163,7 +136,9 @@ int main(int nargs, char ** args)
 
   while (!stop) 
   {
-    beacon_hk(the_hk) ; 
+    lock_shared_hk(); 
+    beacon_hk(the_hk); 
+    unlock_shared_hk(); 
 
     time_t now = time(0); 
 
@@ -183,8 +158,6 @@ int main(int nargs, char ** args)
   }
 
 
-  close(shared_fd); 
-  do_close(outf, outf_name); 
 
   return 0 ; 
 }

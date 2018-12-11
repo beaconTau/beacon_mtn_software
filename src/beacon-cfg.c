@@ -1,6 +1,6 @@
+
 #include <libconfig.h> 
 #include <string.h> 
-
 #include "beacon-cfg.h" 
 #include "beacon.h"
 
@@ -98,6 +98,7 @@ void beacon_hk_config_init(beacon_hk_cfg_t * c)
   c->out_dir = "/data/hk/"; 
   c->max_secs_per_file = 600; 
   c->shm_name = "/hk.bin"; 
+  c->shm_lock_name = "/hk-lock.bin"; 
   c->print_to_screen = 1; 
   c->mate3_url = "162.252.89.77"; 
   c->mate3_port = 8080; 
@@ -126,12 +127,18 @@ int beacon_hk_config_read(const char * file, beacon_hk_cfg_t * c)
   {
     c->out_dir = strdup(outdir_str); //memory leak, but not easy to do anything else here. 
   }
+
   const char * shm_str; 
   if (config_lookup_string(&cfg,"shm_name", &shm_str))
   {
     c->shm_name = strdup(shm_str); //memory leak, but not easy to do anything else here. 
   }
 
+  const char * shm_lock_str; 
+  if (config_lookup_string(&cfg,"shm_lock_name", &shm_lock_str))
+  {
+    c->shm_lock_name = strdup(shm_lock_str); //memory leak, but not easy to do anything else here. 
+  }
 
   const char * mate3_str;
   if (config_lookup_string(&cfg,"mate3_url",&mate3_str))
@@ -160,6 +167,8 @@ int beacon_hk_config_write(const char * file, const beacon_hk_cfg_t * c)
   fprintf(f, "out_dir=\"%s\";\n\n", c->out_dir); 
   fprintf(f, "//shared binary data name \n"); 
   fprintf(f, "shm_name=\"%s\";\n\n", c->shm_name); 
+  fprintf(f, "//shared binary lock name \n"); 
+  fprintf(f, "shm_lock_name=\"%s\";\n\n", c->shm_lock_name); 
   fprintf(f, "//1 to print to screen\n"); 
   fprintf(f, "print_to_screen=%d;\n\n", c->print_to_screen); 
   fprintf(f, "//mate3 address (or hostname)\n"); 
@@ -358,6 +367,20 @@ void beacon_acq_config_init ( beacon_acq_cfg_t * c)
   c->veto.sideswipe_cut_value = 15; 
   c->veto.enable_extended_cut = 1; 
   c->veto.extended_cut_value = 50; 
+
+  c->try_again_sleep_amount = 600; 
+  c->check_power_on = 0; 
+  c->adc_threshold_for_on = 1000; 
+  c->auto_power_on =0; 
+  c->auto_power_off =0; 
+  c->power_monitor_interval = 20; 
+  c->nzero_threshold_to_turn_off = 3; 
+  c->cc_voltage_to_turn_off = 48; 
+  c->inv_voltage_to_turn_off = 48; 
+  c->cc_voltage_to_turn_on = 52; 
+  c->inv_voltage_to_turn_on = 52; 
+  c->power_on_command = "$HOME/scripts/turnAllOn.sh"; 
+  c->power_off_command = "$HOME/scripts/turnAllOff.sh"; 
 }
 
 
@@ -547,7 +570,25 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
   }
 
 
+  config_lookup_int(&cfg,"power.try_again_sleep_amount", &c->try_again_sleep_amount); 
+  config_lookup_int(&cfg,"power.check_power_on", &c->check_power_on); 
+  config_lookup_int(&cfg,"power.adc_threshold_for_on", &c->adc_threshold_for_on); 
+  config_lookup_int(&cfg,"power.auto_power_on", &c->auto_power_on); 
+  config_lookup_int(&cfg,"power.auto_power_off", &c->auto_power_off); 
+  config_lookup_int(&cfg,"power.power_monitor_interval", &c->power_monitor_interval); 
+  config_lookup_int(&cfg,"power.nzero_threshold_to_turn_off", &c->nzero_threshold_to_turn_off); 
+  config_lookup_float(&cfg,"power.cc_voltage_to_turn_off", &c->cc_voltage_to_turn_off); 
+  config_lookup_float(&cfg,"power.cc_voltage_to_turn_on", &c->cc_voltage_to_turn_on); 
+  config_lookup_float(&cfg,"power.inv_voltage_to_turn_off", &c->inv_voltage_to_turn_off); 
+  config_lookup_float(&cfg,"power.inv_voltage_to_turn_on", &c->inv_voltage_to_turn_on); 
 
+  const char * power_off_cmd;
+  const char * power_on_cmd;
+
+  config_lookup_string(&cfg,"power.power_off_command", &power_off_cmd); 
+  config_lookup_string(&cfg,"power.power_on_command", &power_on_cmd); 
+  c->power_off_command = strdup(power_off_cmd); 
+  c->power_on_command = strdup(power_on_cmd); 
   return 0; 
 
 }
@@ -787,6 +828,50 @@ int beacon_acq_config_write(const char * fi, const beacon_acq_cfg_t * c)
 
   fprintf(f,"  //Whether or not to copy configs into run dir\n"); 
   fprintf(f,"  copy_configs = %d;\n", c->copy_configs); 
+
+  fprintf(f,"};\n\n"); 
+
+  fprintf(f,"//settings related to power on/off\n"); 
+  fprintf(f,"power:\n"); 
+  fprintf(f,"{\n"); 
+  fprintf(f,"  // If device isn't ready (too cold!) how long to wait until powering on\n");
+  fprintf(f,"  try_again_sleep_amount=%d;\n\n",c->try_again_sleep_amount);
+
+  fprintf(f,"  // Check if the device power is on at startup and intermittently\n");
+  fprintf(f,"  check_power_on = %d;\n\n",c->check_power_on);
+
+  fprintf(f,"  // The current threshold used to determine if the device is on or not\n");
+  fprintf(f,"  adc_threshold_for_on = %d;\n\n",c->adc_threshold_for_on);
+
+  fprintf(f,"  // Automatically power on if off an battery voltage is ok at startup\n");
+  fprintf(f,"  auto_power_on = %d;\n\n",c->auto_power_on);
+
+  fprintf(f,"  // Automatically power off is the battery voltage is not ok\n");
+  fprintf(f,"  auto_power_off = %d;\n\n",c->auto_power_off);
+
+  fprintf(f,"  // Time interval to check power on and if battery is too low (should be more than hk interval)\n");
+  fprintf(f,"  power_monitor_interval = %d;\n\n",c->power_monitor_interval);
+
+  fprintf(f,"  // How many times the battery is allowed to return zero before considering it a failure mode\n");
+  fprintf(f,"  nzero_threshold_to_turn_off = %d;\n\n",c->nzero_threshold_to_turn_off);
+
+  fprintf(f,"  // charge controller battery voltage threshold before auto turn off (ored with inv)\n");
+  fprintf(f,"  cc_voltage_to_turn_off = %g;\n\n",c->cc_voltage_to_turn_off);
+
+  fprintf(f,"  // inverter battery voltage threshold before auto turn off (ored with cc)\n");
+  fprintf(f,"  inv_voltage_to_turn_off = %g;\n\n",c->inv_voltage_to_turn_off);
+
+  fprintf(f,"  // charge controller battery voltage threshold before auto turn on (anded with inv)\n");
+  fprintf(f,"  cc_voltage_to_turn_on = %g;\n\n",c->cc_voltage_to_turn_on);
+
+  fprintf(f,"  // inverter battery voltage threshold before auto turn on (anded with cc)\n");
+  fprintf(f,"  inv_voltage_to_turn_on = %g;\n\n",c->inv_voltage_to_turn_on);
+
+  fprintf(f,"  //command to power on everything (called when using auto power on)\n");
+  fprintf(f,"  power_on_command = \"%s\";\n\n",c->power_on_command);
+
+  fprintf(f,"  //command to power off everything (called when using auto power off and check power on)\n");
+  fprintf(f,"  power_off_command = \"%s\";\n\n",c->power_off_command);
 
   fprintf(f,"};\n\n"); 
 
