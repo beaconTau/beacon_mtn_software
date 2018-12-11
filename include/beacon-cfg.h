@@ -155,6 +155,9 @@ typedef struct beacon_acq_cfg
   uint8_t dynamic_masking_holdoff; 
   int enable_low_pass_to_trigger; 
 
+  /* Veto options */ 
+  beacon_veto_options_t veto; 
+
 
 } beacon_acq_cfg_t; 
 

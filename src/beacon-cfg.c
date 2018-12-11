@@ -348,6 +348,16 @@ void beacon_acq_config_init ( beacon_acq_cfg_t * c)
   c->copy_paths_to_rundir = "/home/beacon/beacon_python/output:/proc/loadavg";
   c->copy_configs = 1; 
   memset(c->trig_delays,0,sizeof(c->trig_delays)); 
+
+  c->veto.veto_pulse_width=48;
+  c->veto.enable_saturation_cut = 1; 
+  c->veto.saturation_cut_value = 124; 
+  c->veto.enable_cw_cut = 1; 
+  c->veto.cw_cut_value = 50; 
+  c->veto.enable_sideswipe_cut = 1; 
+  c->veto.sideswipe_cut_value = 15; 
+  c->veto.enable_extended_cut = 1; 
+  c->veto.extended_cut_value = 50; 
 }
 
 
@@ -451,6 +461,15 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
 
   config_lookup_int(&cfg,"control.load_thresholds_from_status_file",&c->load_thresholds_from_status_file); 
 
+  config_lookup_int(&cfg,"control.veto_pulse_width",&tmp); c->veto.veto_pulse_width = tmp; 
+  config_lookup_int(&cfg,"control.enable_saturation_cut",&tmp); c->veto.enable_saturation_cut = tmp; 
+  config_lookup_int(&cfg,"control.saturation_cut_value",&tmp); c->veto.saturation_cut_value = tmp; 
+  config_lookup_int(&cfg,"control.enable_cw_cut",&tmp); c->veto.enable_cw_cut = tmp; 
+  config_lookup_int(&cfg,"control.cw_cut_value",&tmp); c->veto.cw_cut_value = tmp; 
+  config_lookup_int(&cfg,"control.enable_sideswipe_cut",&tmp); c->veto.enable_sideswipe_cut = tmp; 
+  config_lookup_int(&cfg,"control.sideswipe_cut_value",&tmp); c->veto.sideswipe_cut_value = tmp; 
+  config_lookup_int(&cfg,"control.enable_extended_cut",&tmp); c->veto.enable_extended_cut = tmp; 
+  config_lookup_int(&cfg,"control.extended_cut_value",&tmp); c->veto.extended_cut_value = tmp; 
 
   const char *spi = 0; 
 
@@ -639,6 +658,32 @@ int beacon_acq_config_write(const char * fi, const beacon_acq_cfg_t * c)
   fprintf(f,"   // load thresholds from status file on start.\n");  
   fprintf(f,"   load_thresholds_from_status_file=%d\n\n", c->load_thresholds_from_status_file); 
 
+  fprintf(f,"   //The pulse width of the veto (in units of 1/31.25 MHz)\n") ;
+  fprintf(f,"   veto_pulse_width = %u;\n\n", c->veto.veto_pulse_width );
+
+  fprintf(f,"   //Enable the saturation veto \n") ;
+  fprintf(f,"   enable_saturation_cut = %u; \n\n", c->veto.enable_saturation_cut);
+
+  fprintf(f,"   //The cut value for the saturation (default 124)\n") ;
+  fprintf(f,"   saturation_cut_value = %u; \n\n", c->veto.saturation_cut_value );
+
+  fprintf(f,"   //Enable the CW (via delay+sum)  veto \n") ;
+  fprintf(f,"   enable_cw_cut = %u; \n\n", c->veto.enable_cw_cut);
+
+  fprintf(f,"   //The cut value for the cw (default 50)\n") ;
+  fprintf(f,"   cw_cut_value = %u; \n\n", c->veto.cw_cut_value );
+
+  fprintf(f,"   //Enable the sideswipe vet\n") ;
+  fprintf(f,"   enable_sideswipe_cut = %u; \n\n", c->veto.enable_sideswipe_cut);
+
+  fprintf(f,"   //Sideswipe cut value (default 15)\n") ;
+  fprintf(f,"   sideswipe_cut_value = %u; \n\n", c->veto.sideswipe_cut_value );
+
+  fprintf(f,"   //Enable the extended cut\n") ;
+  fprintf(f,"   enable_extended_cut = %u; \n\n", c->veto.enable_extended_cut );
+
+  fprintf(f,"   //The value of the extended cut (default 50)\n") ;
+  fprintf(f,"   extended_cut_value = %u;\n\n", c->veto.extended_cut_value);
 
   fprintf(f,"};\n\n"); 
 

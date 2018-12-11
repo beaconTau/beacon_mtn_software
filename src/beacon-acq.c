@@ -831,6 +831,9 @@ static int configure_device()
   /* beacon_set_phased_trigger(device, config.enable_phased_trigger); */
   
 
+  //Set the veto options
+  beacon_set_veto_options(device, &config.veto); 
+
   if (config.apply_attenuations)
   {
     beacon_set_attenuation(device, config.attenuation, 0); 
