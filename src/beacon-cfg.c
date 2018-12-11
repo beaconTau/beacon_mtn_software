@@ -20,10 +20,10 @@
 
 void beacon_start_config_init(beacon_start_cfg_t * c) 
 {
-  c->set_attenuation_cmd = "cd /home/beacon/beacon_python; python set_attenuation.py";
-  c->reconfigure_fpga_cmd = "cd /home/beacon/beacon_python; ./reconfigureFPGA -a 0;";
+  c->set_attenuation_cmd = strdup("cd /home/beacon/beacon_python; python set_attenuation.py");
+  c->reconfigure_fpga_cmd = strdup("cd /home/beacon/beacon_python; ./reconfigureFPGA -a 0;");
   c->desired_rms= 4.2; 
-  c->out_dir = "/data/startup/"; 
+  c->out_dir = strdup("/data/startup/"); 
 }
 
 
@@ -46,19 +46,21 @@ int beacon_start_config_read(const char * file, beacon_start_cfg_t * c)
   const char * attenuation_cmd; 
   if (config_lookup_string(&cfg, "set_attenuation_cmd", &attenuation_cmd))
   {
-    c->set_attenuation_cmd = strdup(attenuation_cmd); //memory leak :( 
+    free(c->set_attenuation_cmd); 
+    c->set_attenuation_cmd = strdup(attenuation_cmd); 
+  }
 
- 
   const char * reconfigure_cmd; 
   if (config_lookup_string(&cfg, "reconfigure_fpga_cmd", &reconfigure_cmd))
   {
-    c->reconfigure_fpga_cmd = strdup(reconfigure_cmd); //memory leak :( 
+    free(c->reconfigure_fpga_cmd); 
+    c->reconfigure_fpga_cmd = strdup(reconfigure_cmd);
   }
- }
 
   const char * out_dir; 
   if (config_lookup_string(&cfg, "out_dir", &out_dir))
   {
+    free(c->out_dir); 
     c->out_dir = strdup(out_dir); //memory leak :( 
   }
 
@@ -95,12 +97,12 @@ int beacon_start_config_write(const char * file, const beacon_start_cfg_t * c)
 void beacon_hk_config_init(beacon_hk_cfg_t * c) 
 {
   c->interval = 5; 
-  c->out_dir = "/data/hk/"; 
+  c->out_dir = strdup("/data/hk/"); 
   c->max_secs_per_file = 600; 
-  c->shm_name = "/hk.bin"; 
-  c->shm_lock_name = "/hk-lock.bin"; 
+  c->shm_name = strdup("/hk.bin"); 
+  c->shm_lock_name = strdup("/hk-lock.bin"); 
   c->print_to_screen = 1; 
-  c->mate3_url = "162.252.89.77"; 
+  c->mate3_url = strdup("162.252.89.77"); 
   c->mate3_port = 8080; 
 }
 
@@ -125,25 +127,29 @@ int beacon_hk_config_read(const char * file, beacon_hk_cfg_t * c)
   const char * outdir_str; 
   if (config_lookup_string(&cfg,"out_dir", &outdir_str))
   {
-    c->out_dir = strdup(outdir_str); //memory leak, but not easy to do anything else here. 
+    free(c->out_dir); 
+    c->out_dir = strdup(outdir_str); 
   }
 
   const char * shm_str; 
   if (config_lookup_string(&cfg,"shm_name", &shm_str))
   {
-    c->shm_name = strdup(shm_str); //memory leak, but not easy to do anything else here. 
+    free(c->shm_name); 
+    c->shm_name = strdup(shm_str); 
   }
 
   const char * shm_lock_str; 
   if (config_lookup_string(&cfg,"shm_lock_name", &shm_lock_str))
   {
-    c->shm_lock_name = strdup(shm_lock_str); //memory leak, but not easy to do anything else here. 
+    free(c->shm_lock_name); 
+    c->shm_lock_name = strdup(shm_lock_str);
   }
 
   const char * mate3_str;
   if (config_lookup_string(&cfg,"mate3_url",&mate3_str))
   {
-    c->mate3_url = strdup(mate3_str); //memory leak 
+    free(c->mate3_url); 
+    c->mate3_url = strdup(mate3_str); 
   }
 
   config_lookup_int(&cfg,"mate3_port",&c->mate3_port); 
@@ -187,10 +193,10 @@ int beacon_hk_config_write(const char * file, const beacon_hk_cfg_t * c)
 
 void beacon_copy_config_init(beacon_copy_cfg_t * c) 
 {
-  c->remote_user = "radio" ;
-  c->remote_hostname = "beacon_archive";
-  c->local_path = "/data" ;
-  c->remote_path = "/home/radio/data_archive/" ;
+  c->remote_user = strdup("radio") ;
+  c->remote_hostname = strdup("beacon_archive");
+  c->local_path = strdup("/data") ;
+  c->remote_path = strdup("/home/radio/data_archive/") ;
   c->port = 2234; //The default for ssh is 22
   c->free_space_delete_threshold = 12000; 
   c->delete_files_older_than = 7;  // ? hopefully this is enough! 
@@ -211,7 +217,8 @@ int beacon_copy_config_read(const char * file, beacon_copy_cfg_t * c)
   const char * remote_hostname_str; 
   if (config_lookup_string(&cfg,"remote_hostname", &remote_hostname_str))
   {
-    c->remote_hostname = strdup(remote_hostname_str); //memory leak, but not easy to do anything else here. 
+    free(c->remote_hostname);
+    c->remote_hostname = strdup(remote_hostname_str); 
   } 
 
   config_lookup_int(&cfg,"port",&c->port);
@@ -219,19 +226,22 @@ int beacon_copy_config_read(const char * file, beacon_copy_cfg_t * c)
   const char * remote_path_str; 
   if (config_lookup_string(&cfg,"remote_path", &remote_path_str))
   {
-    c->remote_path = strdup(remote_path_str); //memory leak, but not easy to do anything else here. 
+    free(c->remote_path); 
+    c->remote_path = strdup(remote_path_str); 
   } 
 
   const char * remote_user_str; 
   if (config_lookup_string(&cfg,"remote_user", &remote_user_str))
   {
-    c->remote_user = strdup(remote_user_str); //memory leak, but not easy to do anything else here. 
+    free(c->remote_user); 
+    c->remote_user = strdup(remote_user_str);
   } 
 
   const char * local_path_str; 
   if (config_lookup_string(&cfg,"local_path", &local_path_str))
   {
-    c->local_path = strdup(local_path_str); //memory leak, but not easy to do anything else here. 
+    free(c->local_path); 
+    c->local_path = strdup(local_path_str); 
   } 
 
   config_lookup_int(&cfg,"free_space_delete_threshold",&c->free_space_delete_threshold); 
@@ -284,11 +294,11 @@ int beacon_copy_config_write(const char * file, const beacon_copy_cfg_t * c)
 
 void beacon_acq_config_init ( beacon_acq_cfg_t * c) 
 {
-  c->spi_device = "/dev/spidev1.0"; 
-  c->run_file = "/beacon/runfile" ; 
-  c->status_save_file = "/beacon/last.st.bin"; 
-  c->output_directory = "/data/" ; 
-  c->alignment_command = "cd /home/nuphase/nuphase_python/;  python align_adcs_beacon.py" ;
+  c->spi_device = strdup("/dev/spidev1.0"); 
+  c->run_file = strdup("/beacon/runfile") ;
+  c->status_save_file = strdup("/beacon/last.st.bin"); 
+  c->output_directory = strdup("/data/") ; 
+  c->alignment_command = strdup("cd /home/nuphase/nuphase_python/;  python align_adcs_beacon.py") ;
 
   c->load_thresholds_from_status_file = 1; 
 
@@ -354,7 +364,7 @@ void beacon_acq_config_init ( beacon_acq_cfg_t * c)
   c->n_fast_scaler_avg = 20; 
   c->realtime_priority = 20; 
 
-  c->copy_paths_to_rundir = "/home/beacon/beacon_python/output:/proc/loadavg";
+  c->copy_paths_to_rundir = strdup("/home/beacon/beacon_python/output:/proc/loadavg");
   c->copy_configs = 1; 
   memset(c->trig_delays,0,sizeof(c->trig_delays)); 
 
@@ -379,8 +389,8 @@ void beacon_acq_config_init ( beacon_acq_cfg_t * c)
   c->inv_voltage_to_turn_off = 48; 
   c->cc_voltage_to_turn_on = 52; 
   c->inv_voltage_to_turn_on = 52; 
-  c->power_on_command = "$HOME/scripts/turnAllOn.sh"; 
-  c->power_off_command = "$HOME/scripts/turnAllOff.sh"; 
+  c->power_on_command = strdup("$HOME/scripts/turnAllOn.sh"); 
+  c->power_off_command = strdup("$HOME/scripts/turnAllOff.sh"); 
 }
 
 
@@ -479,6 +489,7 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
 
   if (config_lookup_string(&cfg, "control.status_save_file", &status_save))
   {
+    free(c->status_save_file);
     c->status_save_file = strdup(status_save); 
   }
 
@@ -498,6 +509,8 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
 
   if (config_lookup_string(&cfg, "device.spi_device", &spi))
   {
+
+    free(c->spi_device);
     c->spi_device = strdup(spi); 
   }
  
@@ -531,24 +544,28 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
   const char * cmd; 
   if (config_lookup_string(&cfg, "device.alignment_command", &cmd) )
   {
+    free(c->alignment_command); 
     c->alignment_command = strdup (cmd); 
   }
 
   const char * run_file ; 
   if (config_lookup_string( &cfg, "output.run_file", &run_file))
   {
+    free(c->run_file);
     c->run_file = strdup(run_file); 
   }
 
   const char * output_directory ; 
   if (config_lookup_string( &cfg, "output.output_directory", &output_directory))
   {
+    free(c->output_directory);
     c->output_directory = strdup(output_directory); 
   }
 
   const char * copy_paths; 
   if (config_lookup_string( &cfg, "output.copy_paths_to_rundir", &copy_paths))
   {
+    free(c->copy_paths_to_rundir); 
     c->copy_paths_to_rundir = strdup(copy_paths); 
   }
 
@@ -585,10 +602,19 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
   const char * power_off_cmd;
   const char * power_on_cmd;
 
-  config_lookup_string(&cfg,"power.power_off_command", &power_off_cmd); 
-  config_lookup_string(&cfg,"power.power_on_command", &power_on_cmd); 
-  c->power_off_command = strdup(power_off_cmd); 
-  c->power_on_command = strdup(power_on_cmd); 
+  if(config_lookup_string(&cfg,"power.power_off_command", &power_off_cmd))
+  {
+    free(c->power_off_command); 
+    c->power_off_command = strdup(power_off_cmd); 
+
+  }
+
+  if (config_lookup_string(&cfg,"power.power_on_command", &power_on_cmd))
+  {
+    free(c->power_on_command); 
+    c->power_on_command = strdup(power_on_cmd); 
+  }
+
   return 0; 
 
 }
