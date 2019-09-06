@@ -118,7 +118,7 @@ int open_shared_hk(const beacon_hk_cfg_t * cfg, int readonly, beacon_hk_t ** hk)
 
     ret = ftruncate(shared_fd, sizeof(beacon_hk_t)); 
 
-    if (! ret) 
+    if (ret) 
     {
       close(shared_fd); 
       return -1; 
@@ -134,7 +134,7 @@ int open_shared_hk(const beacon_hk_cfg_t * cfg, int readonly, beacon_hk_t ** hk)
           return -1; 
         }
 
-        if (!ftruncate(lock_fd, sizeof(pthread_mutex_t)))
+        if (ftruncate(lock_fd, sizeof(pthread_mutex_t)))
         {
           close(shared_fd); 
           close(lock_fd); 
