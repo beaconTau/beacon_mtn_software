@@ -158,6 +158,7 @@ int main(int nargs, char ** args)
   }
 
 
+  if (outf) do_close(outf, outf_name); 
 
   return 0 ; 
 }
