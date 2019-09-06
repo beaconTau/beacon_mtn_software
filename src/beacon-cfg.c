@@ -1,6 +1,6 @@
+
 #include <libconfig.h> 
 #include <string.h> 
-
 #include "beacon-cfg.h" 
 #include "beacon.h"
 
@@ -20,10 +20,10 @@
 
 void beacon_start_config_init(beacon_start_cfg_t * c) 
 {
-  c->set_attenuation_cmd = "cd /home/beacon/beacon_python; python set_attenuation.py";
-  c->reconfigure_fpga_cmd = "cd /home/beacon/beacon_python; ./reconfigureFPGA -a 0;";
+  c->set_attenuation_cmd = strdup("cd /home/beacon/beacon_python; python set_attenuation.py");
+  c->reconfigure_fpga_cmd = strdup("cd /home/beacon/beacon_python; ./reconfigureFPGA -a 0;");
   c->desired_rms= 4.2; 
-  c->out_dir = "/data/startup/"; 
+  c->out_dir = strdup("/data/startup/"); 
 }
 
 
@@ -46,19 +46,21 @@ int beacon_start_config_read(const char * file, beacon_start_cfg_t * c)
   const char * attenuation_cmd; 
   if (config_lookup_string(&cfg, "set_attenuation_cmd", &attenuation_cmd))
   {
-    c->set_attenuation_cmd = strdup(attenuation_cmd); //memory leak :( 
+    free(c->set_attenuation_cmd); 
+    c->set_attenuation_cmd = strdup(attenuation_cmd); 
+  }
 
- 
   const char * reconfigure_cmd; 
   if (config_lookup_string(&cfg, "reconfigure_fpga_cmd", &reconfigure_cmd))
   {
-    c->reconfigure_fpga_cmd = strdup(reconfigure_cmd); //memory leak :( 
+    free(c->reconfigure_fpga_cmd); 
+    c->reconfigure_fpga_cmd = strdup(reconfigure_cmd);
   }
- }
 
   const char * out_dir; 
   if (config_lookup_string(&cfg, "out_dir", &out_dir))
   {
+    free(c->out_dir); 
     c->out_dir = strdup(out_dir); //memory leak :( 
   }
 
@@ -95,10 +97,13 @@ int beacon_start_config_write(const char * file, const beacon_start_cfg_t * c)
 void beacon_hk_config_init(beacon_hk_cfg_t * c) 
 {
   c->interval = 5; 
-  c->out_dir = "/data/hk/"; 
+  c->out_dir = strdup("/data/hk/"); 
   c->max_secs_per_file = 600; 
-  c->shm_name = "/hk.bin"; 
+  c->shm_name = strdup("/hk.bin"); 
+  c->shm_lock_name = strdup("/hk-lock.bin"); 
   c->print_to_screen = 1; 
+  c->mate3_url = strdup("162.252.89.77"); 
+  c->mate3_port = 8080; 
 }
 
 int beacon_hk_config_read(const char * file, beacon_hk_cfg_t * c) 
@@ -122,14 +127,32 @@ int beacon_hk_config_read(const char * file, beacon_hk_cfg_t * c)
   const char * outdir_str; 
   if (config_lookup_string(&cfg,"out_dir", &outdir_str))
   {
-    c->out_dir = strdup(outdir_str); //memory leak, but not easy to do anything else here. 
+    free(c->out_dir); 
+    c->out_dir = strdup(outdir_str); 
   }
+
   const char * shm_str; 
   if (config_lookup_string(&cfg,"shm_name", &shm_str))
   {
-    c->shm_name = strdup(shm_str); //memory leak, but not easy to do anything else here. 
+    free(c->shm_name); 
+    c->shm_name = strdup(shm_str); 
   }
 
+  const char * shm_lock_str; 
+  if (config_lookup_string(&cfg,"shm_lock_name", &shm_lock_str))
+  {
+    free(c->shm_lock_name); 
+    c->shm_lock_name = strdup(shm_lock_str);
+  }
+
+  const char * mate3_str;
+  if (config_lookup_string(&cfg,"mate3_url",&mate3_str))
+  {
+    free(c->mate3_url); 
+    c->mate3_url = strdup(mate3_str); 
+  }
+
+  config_lookup_int(&cfg,"mate3_port",&c->mate3_port); 
 
   config_destroy(&cfg); 
   return 0; 
@@ -150,8 +173,14 @@ int beacon_hk_config_write(const char * file, const beacon_hk_cfg_t * c)
   fprintf(f, "out_dir=\"%s\";\n\n", c->out_dir); 
   fprintf(f, "//shared binary data name \n"); 
   fprintf(f, "shm_name=\"%s\";\n\n", c->shm_name); 
+  fprintf(f, "//shared binary lock name \n"); 
+  fprintf(f, "shm_lock_name=\"%s\";\n\n", c->shm_lock_name); 
   fprintf(f, "//1 to print to screen\n"); 
   fprintf(f, "print_to_screen=%d;\n\n", c->print_to_screen); 
+  fprintf(f, "//mate3 address (or hostname)\n"); 
+  fprintf(f, "mate3_url=%s;\n\n", c->mate3_url); 
+  fprintf(f, "//mate3 port (or 0 for default)\n"); 
+  fprintf(f, "mate3_port=%d;\n\n", c->mate3_port); 
   fclose(f); 
 
   return 0; 
@@ -164,10 +193,10 @@ int beacon_hk_config_write(const char * file, const beacon_hk_cfg_t * c)
 
 void beacon_copy_config_init(beacon_copy_cfg_t * c) 
 {
-  c->remote_user = "radio" ;
-  c->remote_hostname = "beacon_archive";
-  c->local_path = "/data" ;
-  c->remote_path = "/home/radio/data_archive/" ;
+  c->remote_user = strdup("radio") ;
+  c->remote_hostname = strdup("beacon_archive");
+  c->local_path = strdup("/data") ;
+  c->remote_path = strdup("/home/radio/data_archive/") ;
   c->port = 2234; //The default for ssh is 22
   c->free_space_delete_threshold = 12000; 
   c->delete_files_older_than = 7;  // ? hopefully this is enough! 
@@ -188,7 +217,8 @@ int beacon_copy_config_read(const char * file, beacon_copy_cfg_t * c)
   const char * remote_hostname_str; 
   if (config_lookup_string(&cfg,"remote_hostname", &remote_hostname_str))
   {
-    c->remote_hostname = strdup(remote_hostname_str); //memory leak, but not easy to do anything else here. 
+    free(c->remote_hostname);
+    c->remote_hostname = strdup(remote_hostname_str); 
   } 
 
   config_lookup_int(&cfg,"port",&c->port);
@@ -196,19 +226,22 @@ int beacon_copy_config_read(const char * file, beacon_copy_cfg_t * c)
   const char * remote_path_str; 
   if (config_lookup_string(&cfg,"remote_path", &remote_path_str))
   {
-    c->remote_path = strdup(remote_path_str); //memory leak, but not easy to do anything else here. 
+    free(c->remote_path); 
+    c->remote_path = strdup(remote_path_str); 
   } 
 
   const char * remote_user_str; 
   if (config_lookup_string(&cfg,"remote_user", &remote_user_str))
   {
-    c->remote_user = strdup(remote_user_str); //memory leak, but not easy to do anything else here. 
+    free(c->remote_user); 
+    c->remote_user = strdup(remote_user_str);
   } 
 
   const char * local_path_str; 
   if (config_lookup_string(&cfg,"local_path", &local_path_str))
   {
-    c->local_path = strdup(local_path_str); //memory leak, but not easy to do anything else here. 
+    free(c->local_path); 
+    c->local_path = strdup(local_path_str); 
   } 
 
   config_lookup_int(&cfg,"free_space_delete_threshold",&c->free_space_delete_threshold); 
@@ -261,11 +294,11 @@ int beacon_copy_config_write(const char * file, const beacon_copy_cfg_t * c)
 
 void beacon_acq_config_init ( beacon_acq_cfg_t * c) 
 {
-  c->spi_device = "/dev/spidev1.0"; 
-  c->run_file = "/beacon/runfile" ; 
-  c->status_save_file = "/beacon/last.st.bin"; 
-  c->output_directory = "/data/" ; 
-  c->alignment_command = "cd /home/nuphase/nuphase_python/;  python align_adcs_beacon.py" ;
+  c->spi_device = strdup("/dev/spidev1.0"); 
+  c->run_file = strdup("/beacon/runfile") ;
+  c->status_save_file = strdup("/beacon/last.st.bin"); 
+  c->output_directory = strdup("/data/") ; 
+  c->alignment_command = strdup("cd /home/nuphase/nuphase_python/;  python align_adcs_beacon.py") ;
 
   c->load_thresholds_from_status_file = 1; 
 
@@ -292,6 +325,7 @@ void beacon_acq_config_init ( beacon_acq_cfg_t * c)
   c->buffer_capacity = 256; 
   c->monitor_interval = 1.0; 
   c->sw_trigger_interval = 1; 
+  c->randomize_sw_trigger = 0; 
   c->print_interval = 10; 
   c->poll_usecs = 500; 
 
@@ -306,6 +340,7 @@ void beacon_acq_config_init ( beacon_acq_cfg_t * c)
   c->apply_attenuations = 0; 
   c->enable_trigout=1; 
   c->enable_extin = 0; 
+  c->extin_trig_delay_us = 0; 
   c->trigout_width = 3; 
   c->disable_trigout_on_exit = 1; 
 
@@ -330,9 +365,33 @@ void beacon_acq_config_init ( beacon_acq_cfg_t * c)
   c->n_fast_scaler_avg = 20; 
   c->realtime_priority = 20; 
 
-  c->copy_paths_to_rundir = "/home/beacon/beacon_python/output:/proc/loadavg";
+  c->copy_paths_to_rundir = strdup("/home/beacon/beacon_python/output:/proc/loadavg");
   c->copy_configs = 1; 
   memset(c->trig_delays,0,sizeof(c->trig_delays)); 
+
+  c->veto.veto_pulse_width=48;
+  c->veto.enable_saturation_cut = 1; 
+  c->veto.saturation_cut_value = 124; 
+  c->veto.enable_cw_cut = 1; 
+  c->veto.cw_cut_value = 50; 
+  c->veto.enable_sideswipe_cut = 1; 
+  c->veto.sideswipe_cut_value = 15; 
+  c->veto.enable_extended_cut = 1; 
+  c->veto.extended_cut_value = 50; 
+
+  c->try_again_sleep_amount = 600; 
+  c->check_power_on = 0; 
+  c->adc_threshold_for_on = 1000; 
+  c->auto_power_on =0; 
+  c->auto_power_off =0; 
+  c->power_monitor_interval = 20; 
+  c->nzero_threshold_to_turn_off = 3; 
+  c->cc_voltage_to_turn_off = 48; 
+  c->inv_voltage_to_turn_off = 48; 
+  c->cc_voltage_to_turn_on = 52; 
+  c->inv_voltage_to_turn_on = 52; 
+  c->power_on_command = strdup("$HOME/scripts/turnAllOn.sh"); 
+  c->power_off_command = strdup("$HOME/scripts/turnAllOff.sh"); 
 }
 
 
@@ -350,8 +409,9 @@ void config_lookup_pol(config_t* cfg, const char* key, beacon_trigger_polarizati
       polInd++;
       polName = beacon_trigger_polarization_name((beacon_trigger_polarization_t) polInd);
       if(polName && strcmp(str, polName)==0){
-	foundMatch = 1;
-	break;
+        foundMatch = 1;
+        *pol = (beacon_trigger_polarization_t) polInd; 
+        break;
       }
     }
     while(polName != NULL);
@@ -406,6 +466,7 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
   c->max_threshold_increase = tmp; 
   config_lookup_float(&cfg,"control.monitor_interval",&c->monitor_interval); 
   config_lookup_float(&cfg,"control.sw_trigger_interval",&c->sw_trigger_interval); 
+  config_lookup_int(&cfg,"control.randomize_sw_trigger",&c->randomize_sw_trigger); 
   config_lookup_int(&cfg,"control.enable_phased_trigger",&c->enable_phased_trigger); 
   config_lookup_pol(&cfg,"control.trigger_polarization",&c->trigger_polarization);  
   config_lookup_int(&cfg,"control.secs_before_phased_trigger",&c->secs_before_phased_trigger); 
@@ -415,6 +476,7 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
   config_lookup_int(&cfg,"control.subtract_gated",&c->subtract_gated); 
   config_lookup_int(&cfg,"realtime_priority",&c->realtime_priority); 
   config_lookup_int(&cfg,"poll_usecs",&tmp); 
+  c->poll_usecs = tmp; 
   config_lookup_int(&cfg,"control.enable_dynamic_masking",&c->enable_dynamic_masking); 
   config_lookup_int(&cfg,"control.use_fixed_thresholds",&c->use_fixed_thresholds); 
   config_lookup_int(&cfg,"control.dynamic_masking_threshold",&tmp);
@@ -422,7 +484,6 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
   config_lookup_int(&cfg,"control.dynamic_masking_holdoff",&tmp); 
   c->dynamic_masking_holdoff = tmp; 
   config_lookup_int(&cfg,"device.enable_low_pass_to_trigger",&c->enable_low_pass_to_trigger); 
-  c->poll_usecs = tmp; 
 
 
 
@@ -430,16 +491,28 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
 
   if (config_lookup_string(&cfg, "control.status_save_file", &status_save))
   {
+    free(c->status_save_file);
     c->status_save_file = strdup(status_save); 
   }
 
   config_lookup_int(&cfg,"control.load_thresholds_from_status_file",&c->load_thresholds_from_status_file); 
 
+  config_lookup_int(&cfg,"control.veto_pulse_width",&tmp); c->veto.veto_pulse_width = tmp; 
+  config_lookup_int(&cfg,"control.enable_saturation_cut",&tmp); c->veto.enable_saturation_cut = tmp; 
+  config_lookup_int(&cfg,"control.saturation_cut_value",&tmp); c->veto.saturation_cut_value = tmp; 
+  config_lookup_int(&cfg,"control.enable_cw_cut",&tmp); c->veto.enable_cw_cut = tmp; 
+  config_lookup_int(&cfg,"control.cw_cut_value",&tmp); c->veto.cw_cut_value = tmp; 
+  config_lookup_int(&cfg,"control.enable_sideswipe_cut",&tmp); c->veto.enable_sideswipe_cut = tmp; 
+  config_lookup_int(&cfg,"control.sideswipe_cut_value",&tmp); c->veto.sideswipe_cut_value = tmp; 
+  config_lookup_int(&cfg,"control.enable_extended_cut",&tmp); c->veto.enable_extended_cut = tmp; 
+  config_lookup_int(&cfg,"control.extended_cut_value",&tmp); c->veto.extended_cut_value = tmp; 
 
   const char *spi = 0; 
 
   if (config_lookup_string(&cfg, "device.spi_device", &spi))
   {
+
+    free(c->spi_device);
     c->spi_device = strdup(spi); 
   }
  
@@ -451,6 +524,7 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
   config_lookup_int(&cfg,"device.calpulser_state", &c->calpulser_state); 
   config_lookup_int(&cfg,"device.enable_trigout", &c->enable_trigout); 
   config_lookup_int(&cfg,"device.enable_extin", &c->enable_extin); 
+  config_lookup_float(&cfg,"device.extin_trig_delay_us", &c->extin_trig_delay_us);
   config_lookup_int(&cfg,"device.trigout_width", &c->trigout_width); 
   config_lookup_int(&cfg,"device.disable_trigout_on_exit", &c->disable_trigout_on_exit); 
   config_lookup_int(&cfg,"device.spi_clock", &c->spi_clock); 
@@ -473,24 +547,28 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
   const char * cmd; 
   if (config_lookup_string(&cfg, "device.alignment_command", &cmd) )
   {
+    free(c->alignment_command); 
     c->alignment_command = strdup (cmd); 
   }
 
   const char * run_file ; 
   if (config_lookup_string( &cfg, "output.run_file", &run_file))
   {
+    free(c->run_file);
     c->run_file = strdup(run_file); 
   }
 
   const char * output_directory ; 
   if (config_lookup_string( &cfg, "output.output_directory", &output_directory))
   {
+    free(c->output_directory);
     c->output_directory = strdup(output_directory); 
   }
 
   const char * copy_paths; 
   if (config_lookup_string( &cfg, "output.copy_paths_to_rundir", &copy_paths))
   {
+    free(c->copy_paths_to_rundir); 
     c->copy_paths_to_rundir = strdup(copy_paths); 
   }
 
@@ -512,6 +590,33 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
   }
 
 
+  config_lookup_int(&cfg,"power.try_again_sleep_amount", &c->try_again_sleep_amount); 
+  config_lookup_int(&cfg,"power.check_power_on", &c->check_power_on); 
+  config_lookup_int(&cfg,"power.adc_threshold_for_on", &c->adc_threshold_for_on); 
+  config_lookup_int(&cfg,"power.auto_power_on", &c->auto_power_on); 
+  config_lookup_int(&cfg,"power.auto_power_off", &c->auto_power_off); 
+  config_lookup_int(&cfg,"power.power_monitor_interval", &c->power_monitor_interval); 
+  config_lookup_int(&cfg,"power.nzero_threshold_to_turn_off", &c->nzero_threshold_to_turn_off); 
+  config_lookup_float(&cfg,"power.cc_voltage_to_turn_off", &c->cc_voltage_to_turn_off); 
+  config_lookup_float(&cfg,"power.cc_voltage_to_turn_on", &c->cc_voltage_to_turn_on); 
+  config_lookup_float(&cfg,"power.inv_voltage_to_turn_off", &c->inv_voltage_to_turn_off); 
+  config_lookup_float(&cfg,"power.inv_voltage_to_turn_on", &c->inv_voltage_to_turn_on); 
+
+  const char * power_off_cmd;
+  const char * power_on_cmd;
+
+  if(config_lookup_string(&cfg,"power.power_off_command", &power_off_cmd))
+  {
+    free(c->power_off_command); 
+    c->power_off_command = strdup(power_off_cmd); 
+
+  }
+
+  if (config_lookup_string(&cfg,"power.power_on_command", &power_on_cmd))
+  {
+    free(c->power_on_command); 
+    c->power_on_command = strdup(power_on_cmd); 
+  }
 
   return 0; 
 
@@ -588,6 +693,9 @@ int beacon_acq_config_write(const char * fi, const beacon_acq_cfg_t * c)
   fprintf(f,"   // software trigger interval (in seconds)\n"); 
   fprintf(f,"   sw_trigger_interval = %g;\n\n", c->sw_trigger_interval); 
 
+  fprintf(f,"   // randomize sw trigger interval (using exponential distribution)\n"); 
+  fprintf(f,"   randomize_sw_trigger = %d;\n\n", c->randomize_sw_trigger); 
+
   fprintf(f,"   //enable the phased trigger readout\n"); 
   fprintf(f,"   enable_phased_trigger = %d;\n\n",c->enable_phased_trigger); 
 
@@ -620,6 +728,32 @@ int beacon_acq_config_write(const char * fi, const beacon_acq_cfg_t * c)
   fprintf(f,"   // load thresholds from status file on start.\n");  
   fprintf(f,"   load_thresholds_from_status_file=%d\n\n", c->load_thresholds_from_status_file); 
 
+  fprintf(f,"   //The pulse width of the veto (in units of 1/31.25 MHz)\n") ;
+  fprintf(f,"   veto_pulse_width = %u;\n\n", c->veto.veto_pulse_width );
+
+  fprintf(f,"   //Enable the saturation veto \n") ;
+  fprintf(f,"   enable_saturation_cut = %u; \n\n", c->veto.enable_saturation_cut);
+
+  fprintf(f,"   //The cut value for the saturation (default 124)\n") ;
+  fprintf(f,"   saturation_cut_value = %u; \n\n", c->veto.saturation_cut_value );
+
+  fprintf(f,"   //Enable the CW (via delay+sum)  veto \n") ;
+  fprintf(f,"   enable_cw_cut = %u; \n\n", c->veto.enable_cw_cut);
+
+  fprintf(f,"   //The cut value for the cw (default 50)\n") ;
+  fprintf(f,"   cw_cut_value = %u; \n\n", c->veto.cw_cut_value );
+
+  fprintf(f,"   //Enable the sideswipe vet\n") ;
+  fprintf(f,"   enable_sideswipe_cut = %u; \n\n", c->veto.enable_sideswipe_cut);
+
+  fprintf(f,"   //Sideswipe cut value (default 15)\n") ;
+  fprintf(f,"   sideswipe_cut_value = %u; \n\n", c->veto.sideswipe_cut_value );
+
+  fprintf(f,"   //Enable the extended cut\n") ;
+  fprintf(f,"   enable_extended_cut = %u; \n\n", c->veto.enable_extended_cut );
+
+  fprintf(f,"   //The value of the extended cut (default 50)\n") ;
+  fprintf(f,"   extended_cut_value = %u;\n\n", c->veto.extended_cut_value);
 
   fprintf(f,"};\n\n"); 
 
@@ -648,6 +782,10 @@ int beacon_acq_config_write(const char * fi, const beacon_acq_cfg_t * c)
 
   fprintf(f,"  // Whether or not to enable external trigger input\n"); 
   fprintf(f,"  enable_extin = %d;\n\n", c->enable_extin); 
+
+  fprintf(f,"  // Trigger delay on external input, in units of us. Will be rounded to nearest 128 ns. Values above 8,388.608 us will wrap around...\n"); 
+  fprintf(f,"  extin_trig_delay_us = %g;\n\n", c->extin_trig_delay_us); 
+
 
   fprintf(f,"  // The width of the trigger output in 40 ns intervals\n"); 
   fprintf(f,"  trigout_width = %d;\n\n", c->trigout_width); 
@@ -723,6 +861,50 @@ int beacon_acq_config_write(const char * fi, const beacon_acq_cfg_t * c)
 
   fprintf(f,"  //Whether or not to copy configs into run dir\n"); 
   fprintf(f,"  copy_configs = %d;\n", c->copy_configs); 
+
+  fprintf(f,"};\n\n"); 
+
+  fprintf(f,"//settings related to power on/off\n"); 
+  fprintf(f,"power:\n"); 
+  fprintf(f,"{\n"); 
+  fprintf(f,"  // If device isn't ready (too cold!) how long to wait until powering on\n");
+  fprintf(f,"  try_again_sleep_amount=%d;\n\n",c->try_again_sleep_amount);
+
+  fprintf(f,"  // Check if the device power is on at startup and intermittently\n");
+  fprintf(f,"  check_power_on = %d;\n\n",c->check_power_on);
+
+  fprintf(f,"  // The current threshold used to determine if the device is on or not\n");
+  fprintf(f,"  adc_threshold_for_on = %d;\n\n",c->adc_threshold_for_on);
+
+  fprintf(f,"  // Automatically power on if off an battery voltage is ok at startup\n");
+  fprintf(f,"  auto_power_on = %d;\n\n",c->auto_power_on);
+
+  fprintf(f,"  // Automatically power off is the battery voltage is not ok\n");
+  fprintf(f,"  auto_power_off = %d;\n\n",c->auto_power_off);
+
+  fprintf(f,"  // Time interval to check power on and if battery is too low (should be more than hk interval)\n");
+  fprintf(f,"  power_monitor_interval = %d;\n\n",c->power_monitor_interval);
+
+  fprintf(f,"  // How many times the battery is allowed to return zero before considering it a failure mode\n");
+  fprintf(f,"  nzero_threshold_to_turn_off = %d;\n\n",c->nzero_threshold_to_turn_off);
+
+  fprintf(f,"  // charge controller battery voltage threshold before auto turn off (ored with inv)\n");
+  fprintf(f,"  cc_voltage_to_turn_off = %g;\n\n",c->cc_voltage_to_turn_off);
+
+  fprintf(f,"  // inverter battery voltage threshold before auto turn off (ored with cc)\n");
+  fprintf(f,"  inv_voltage_to_turn_off = %g;\n\n",c->inv_voltage_to_turn_off);
+
+  fprintf(f,"  // charge controller battery voltage threshold before auto turn on (anded with inv)\n");
+  fprintf(f,"  cc_voltage_to_turn_on = %g;\n\n",c->cc_voltage_to_turn_on);
+
+  fprintf(f,"  // inverter battery voltage threshold before auto turn on (anded with cc)\n");
+  fprintf(f,"  inv_voltage_to_turn_on = %g;\n\n",c->inv_voltage_to_turn_on);
+
+  fprintf(f,"  //command to power on everything (called when using auto power on)\n");
+  fprintf(f,"  power_on_command = \"%s\";\n\n",c->power_on_command);
+
+  fprintf(f,"  //command to power off everything (called when using auto power off and check power on)\n");
+  fprintf(f,"  power_off_command = \"%s\";\n\n",c->power_off_command);
 
   fprintf(f,"};\n\n"); 
 

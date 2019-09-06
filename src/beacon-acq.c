@@ -1,5 +1,6 @@
 /* Main Acquisition program for vPhase 
  *
+ *
  * Cosmin Deaconu <cozzyd@kicp.uchicago.edu>
  *
  *
@@ -43,6 +44,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <inttypes.h> 
+#include <math.h> 
 
 
 /************** Structs /Typedefs ******************************/
@@ -116,6 +118,12 @@ static beacon_acq_cfg_t config;
 /** Need this to apply attenuation */
 static beacon_start_cfg_t start_config; 
 
+/** Need this to read hk */
+static beacon_hk_cfg_t hk_config; 
+
+static beacon_hk_t * the_hk = 0; 
+
+
 /* Mutex protecting the configuration */
 static pthread_mutex_t config_lock = PTHREAD_MUTEX_INITIALIZER; 
 
@@ -154,7 +162,12 @@ static volatile int die;
 
 static int run_number; 
 
+
 // this sets everything up (opens device, starts threads, signal handlers, etc. ) 
+//
+//
+const int SETUP_FAILED = 1; 
+const int SETUP_TRY_AGAIN_LATER = 2; 
 static int setup(); 
 // this cleans up 
 static int teardown(); 
@@ -184,12 +197,34 @@ static void * write_thread(void * p );
  * */ 
 int main(int nargs, char ** args) 
 {
-  if(setup())
+
+
+  int setup_return = setup(); 
+
+  if (setup_return == SETUP_FAILED) 
   {
-    return 1; 
+    return 1; //this is bad
   }
+
+  if (setup_return == SETUP_TRY_AGAIN_LATER) 
+  {
+    sleep(config.try_again_sleep_amount); 
+    return 0; 
+  }
+
   struct timespec start; 
   clock_gettime(CLOCK_MONOTONIC_COARSE, &start); 
+
+
+  /** Keeps track of the last time we checked the power information */ 
+  struct timespec last_check_power = {.tv_sec = 0, .tv_nsec = 0}; 
+
+  /** Keeps track of how many times in a row there is no power info (battery voltage is 0) */ 
+  int num_no_power_info = 0; 
+
+  int must_turn_off = 0;
+ 
+
 
   struct timespec now; 
   while(!die) 
@@ -201,10 +236,62 @@ int main(int nargs, char ** args)
     }
 
     usleep(500000);  //500 ms 
+
+    /*Power checks go here  */ 
+    if (the_hk && (config.auto_power_off || config.check_power_on)  && (timespec_difference_float(&now, &last_check_power) > config.power_monitor_interval))
+    {
+
+      int must_turn_off = 0; 
+
+
+      lock_shared_hk(); 
+      int adc_current = the_hk->adc_current; 
+      float cc_voltage = the_hk->cc_batt_dV*10; 
+      float inv_voltage = the_hk->inv_batt_dV*10; 
+      unlock_shared_hk(); 
+
+      if (config.check_power_on && adc_current < config.adc_threshold_for_on) 
+      {
+        fprintf(stderr,"WARNING: was the system turned off!???"); 
+        fatal(); 
+        must_turn_off=1; //just in case... 
+
+
+      }
+
+      if (config.auto_power_off) 
+      {
+        if ( (cc_voltage = 0 || inv_voltage == 0) && ( ++num_no_power_info > config.nzero_threshold_to_turn_off))
+        {
+          must_turn_off = 1; 
+          fprintf(stderr,"max number of zero values of battery voltage exceeded! turning off!...\n"); 
+        }
+        else if (cc_voltage < config.cc_voltage_to_turn_off || inv_voltage < config.inv_voltage_to_turn_off)
+        {
+          must_turn_off = 1; 
+          fprintf(stderr,"battery voltage too low! turning off...\n"); 
+        }
+
+        if (must_turn_off) 
+        {
+          fatal();
+        }
+      }
+
+      clock_gettime(CLOCK_MONOTONIC_COARSE, &last_check_power); 
+    }
+
+
+
     sched_yield();
   }
 
-  return teardown(); 
+  int teardown_return = teardown(); 
+
+  if (must_turn_off) teardown_return += system(config.power_off_command); 
+
+  return teardown_return; 
+
 }
 
 
@@ -301,6 +388,26 @@ static void fs_avg_print(FILE * f)
 
 
 
+static struct drand48_data sw_rand; 
+static double get_next_sw_trig_interval()
+{
+  if (!config.sw_trigger_interval) return 0; 
+  if (config.randomize_sw_trigger)
+  {
+    double u = 0; 
+    while (u==1 || u==0)  //make sure we don't have 0 or 1
+    {
+      drand48_r(&sw_rand,&u); 
+    }
+
+    return -log(u)*config.sw_trigger_interval; 
+  }
+
+  return config.sw_trigger_interval; 
+
+}
+
+
 /***********************************************************************
  * Monitor thread
  *
@@ -315,6 +422,8 @@ void * monitor_thread(void *v)
   struct timespec start; 
   clock_gettime(CLOCK_MONOTONIC, &start); 
 
+  //seed the rng for randomizing sw trigger
+  srand48_r(start.tv_nsec, &sw_rand); 
 
   // this keeps track of when we sent the last sw trigger
   struct timespec last_sw_trig = { .tv_sec = 0, .tv_nsec = 0};
@@ -328,6 +437,8 @@ void * monitor_thread(void *v)
   // the phased trigger status, so that we can turn it on or off as appropriate
   // start as undefined
   int phased_trigger_status = -1; 
+
+  double sw_trig_interval =  get_next_sw_trig_interval(); 
 
   while(!die) 
   {
@@ -355,8 +466,8 @@ void * monitor_thread(void *v)
       }
       else
       {
-	beacon_phased_trigger_readout(device, 1); 
-	phased_trigger_status = 1; 
+        beacon_phased_trigger_readout(device, 1); 
+        phased_trigger_status = 1; 
       }
     }
     else if (!config.enable_phased_trigger && phased_trigger_status == 1)
@@ -441,9 +552,9 @@ void * monitor_thread(void *v)
 
         mb.thresholds[ibeam] = st->trigger_thresholds[ibeam] + dthreshold;
 
-	if(mb.thresholds[ibeam] < config.min_threshold){
-	  mb.thresholds[ibeam] = config.min_threshold;
-	}
+        if(mb.thresholds[ibeam] < config.min_threshold){
+          mb.thresholds[ibeam] = config.min_threshold;
+        }
 
 //        printf("BEAM %d\n", ibeam); 
 //        printf("  slow scaler: %f, fast_scaler: %f, avg: %f\n", measured_slow, measured_fast, measured); 
@@ -462,11 +573,12 @@ void * monitor_thread(void *v)
       diff_mon = 0; 
     }
 
-    if (config.sw_trigger_interval && diff_swtrig > config.sw_trigger_interval)
+    if (sw_trig_interval && diff_swtrig > sw_trig_interval)
     {
       beacon_sw_trigger(device); 
       memcpy(&last_sw_trig,&now, sizeof(now)); 
       diff_swtrig = 0;
+      sw_trig_interval = get_next_sw_trig_interval(); 
     }
 
     //now figure out how long to sleep 
@@ -474,7 +586,7 @@ void * monitor_thread(void *v)
     float how_long_to_sleep = 0.1; //don't sleep longer than 100 ms 
 
     if (config.monitor_interval && config.monitor_interval - diff_mon  < how_long_to_sleep) how_long_to_sleep = config.monitor_interval - diff_mon; 
-    if (config.sw_trigger_interval && config.sw_trigger_interval - diff_swtrig  < how_long_to_sleep) how_long_to_sleep = config.sw_trigger_interval - diff_swtrig; 
+    if (sw_trig_interval && sw_trig_interval - diff_swtrig  < how_long_to_sleep) how_long_to_sleep = sw_trig_interval - diff_swtrig; 
 
     usleep(how_long_to_sleep * 1e6); 
   }
@@ -762,9 +874,9 @@ static int configure_device()
   beacon_configure_trigger_output(device,trigo); 
 
   beacon_ext_input_config_t trigi; 
-
-  beacon_get_ext_trigger_in(device,&trigi); 
+  //beacon_get_ext_trigger_in(device,&trigi);// nothing to preserve, so don't bother! 
   trigi.use_as_trigger = config.enable_extin; 
+  trigi.trig_delay = round(config.extin_trig_delay_us*1e3/128.); 
   beacon_configure_ext_trigger_in(device,trigi); 
 
 
@@ -783,6 +895,9 @@ static int configure_device()
   /* //enable the trigger, if desired */
   /* beacon_set_phased_trigger(device, config.enable_phased_trigger); */
   
+
+  //Set the veto options
+  beacon_set_veto_options(device, &config.veto); 
 
   if (config.apply_attenuations)
   {
@@ -819,10 +934,15 @@ static int setup()
   sigaction(SIGUSR1, &sa,0); 
   sigaction(SIGUSR2, &sa,0); 
 
-
   //Read configuration 
-  read_config(1); 
+  int config_return = read_config(1); 
 
+  if (config_return == SETUP_TRY_AGAIN_LATER) 
+  {
+
+    return SETUP_TRY_AGAIN_LATER;
+
+  }
   /* open up the run number file, read the run, then increment it and save it
    * This is a bit fragile, potentially, so maybe revisit. 
    * */ 
@@ -997,6 +1117,7 @@ int read_config(int first_time)
 
   char * cfgpath = 0;  
   char * start_cfgpath = 0;  
+  char * hk_cfgpath = 0;  
   
 
   pthread_mutex_lock(&config_lock); 
@@ -1016,12 +1137,62 @@ int read_config(int first_time)
   {
     printf("Using startup config file: %s\n", start_cfgpath); 
   }
-  
 
+ 
+   if (!beacon_get_cfg_file(&hk_cfgpath, BEACON_HK))
+  {
+    printf("Using hk config file: %s\n", hk_cfgpath); 
+  }
+  
 
   beacon_acq_config_read( cfgpath, &config); 
   beacon_start_config_read(start_cfgpath, &start_config); 
+  beacon_hk_config_read(hk_cfgpath, &hk_config); 
+
   pthread_mutex_unlock(&config_lock); 
+
+  //open the shared hk
+  if (first_time) 
+  {
+    int opened = open_shared_hk(&hk_config, 1, &the_hk); 
+    if (opened) 
+    {
+      fprintf(stderr, "Could not open shared hk... aborting\n"); 
+      return SETUP_FAILED; 
+    }
+  }
+
+
+  if (first_time && (config.check_power_on || config.auto_power_on || config.auto_power_off))
+  {
+    int quick_exit = 0;
+    //check if the adc current is above
+    lock_shared_hk(); 
+    if (the_hk->adc_current < config.adc_threshold_for_on)
+    {
+      quick_exit = 1; 
+
+      if (config.auto_power_on && the_hk->cc_batt_dV*10 > config.cc_voltage_to_turn_on && the_hk->inv_batt_dV*10 > config.inv_voltage_to_turn_on) 
+      {
+        fprintf(stderr," Voltages exceeded power on threshold. Will turn on...\n"); 
+        system(config.power_on_command); 
+      }
+      else
+      {
+        fprintf(stderr, "adc current is %d, below threshold of %d. Either the ADC is not on or beacon-hk is not running... Exiting.\n", the_hk->adc_current, config.adc_threshold_for_on); 
+      }
+    }
+    unlock_shared_hk(); 
+    if (quick_exit) 
+    {
+      return SETUP_TRY_AGAIN_LATER; 
+    }
+  }
+
+
+
+  ///ok, if we got this far, we'll actually start things up 
+
 
   pid_state_init(&control, config.k_p, config.k_i, config.k_d); 
 

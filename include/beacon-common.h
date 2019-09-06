@@ -3,7 +3,11 @@
 #include <time.h> 
 #include <zlib.h>
 
+typedef struct beacon_hkd_cfg beacon_hk_cfg_t; 
+typedef struct beacon_hk beacon_hk_t; 
+
 /** Various common things used by multiple programs */ 
+
 
 
 
@@ -53,6 +57,21 @@ int mkdirs_for_time(const char * prefix, const char * pattern,  time_t when);
 
 /* Closes and, if ends with .tmp suffix, renames */ 
 int do_close(gzFile gzf, char * path); 
+
+
+
+/** Things related to hk sharing 
+ *
+ * *hk will be mapped to a shared hk. 
+ * Use munmap / msync as usual with it . 
+ *
+ */ 
+int open_shared_hk(const beacon_hk_cfg_t * cfg, int readonly,  beacon_hk_t ** hk); 
+/** lock and unlock shared memory */ 
+int lock_shared_hk(); 
+int unlock_shared_hk(); 
+
+
 
 
 #endif

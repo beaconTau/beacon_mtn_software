@@ -4,6 +4,11 @@
 #include <stdlib.h> 
 #include <string.h> 
 #include <sys/stat.h> 
+#include <sys/mman.h> 
+#include "beacon-cfg.h" 
+#include "beacon.h" 
+#include <fcntl.h>
+#include <pthread.h> 
 
 
 
@@ -71,6 +76,103 @@ int do_close(gzFile gzf, char * path)
   free(path); 
   return ret; 
 }
+
+
+
+static pthread_mutex_t * hk_lock =0; 
+static int have_hk_lock =0;  
+
+
+int lock_shared_hk() 
+{
+  if (!hk_lock) return -1; 
+  if (have_hk_lock) return -1; 
+
+
+  int ret = pthread_mutex_lock(hk_lock); 
+  if(!ret)
+  {
+    have_hk_lock =1; 
+  }
+  return ret; 
+}
+
+int unlock_shared_hk() 
+{
+  if (!hk_lock || !have_hk_lock) return -1; 
+
+  int ret = pthread_mutex_unlock(hk_lock); 
+  if(!ret)
+  {
+    have_hk_lock =0; 
+  }
+  return ret; 
+}
+
+int open_shared_hk(const beacon_hk_cfg_t * cfg, int readonly, beacon_hk_t ** hk) 
+{
+    int ret = 0; 
+    int shared_fd = shm_open(cfg->shm_name, O_CREAT | O_RDWR, 0666); 
+
+    if (shared_fd < 0) return -1; 
+
+    ret = ftruncate(shared_fd, sizeof(beacon_hk_t)); 
+
+    if (! ret) 
+    {
+      close(shared_fd); 
+      return -1; 
+    }
+
+    //create the lock
+    if (!hk_lock) 
+    {
+        int lock_fd = shm_open(cfg->shm_lock_name, O_CREAT | O_RDWR, 0666); 
+        if (lock_fd < 0) 
+        {
+          close(shared_fd); 
+          return -1; 
+        }
+
+        if (!ftruncate(lock_fd, sizeof(pthread_mutex_t)))
+        {
+          close(shared_fd); 
+          close(lock_fd); 
+          return -1; 
+        }
+
+        hk_lock = mmap(0, sizeof(pthread_mutex_t), PROT_READ | PROT_WRITE, MAP_SHARED, lock_fd, 0); 
+        close(lock_fd); 
+        if (!hk_lock) 
+        {
+          close (shared_fd); 
+          return -1; 
+        }
+        
+        pthread_mutexattr_t attr; 
+        pthread_mutexattr_init(&attr); 
+        pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED); 
+        pthread_mutex_init(hk_lock,&attr); 
+    }
+
+    *hk = mmap (0, sizeof(beacon_hk_t), readonly ? PROT_READ : PROT_READ | PROT_WRITE, MAP_SHARED, shared_fd, 0); 
+    close(shared_fd); 
+    if (!*hk) return -1; 
+    return 0; 
+}
+
+
+__attribute__((destructor))
+static void unload() 
+{
+//make sure we don't hold the mutex
+  if(have_hk_lock) 
+  {
+    unlock_shared_hk(); 
+  }
+}
+
+
 
 
 

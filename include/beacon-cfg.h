@@ -27,20 +27,20 @@ typedef struct beacon_acq_cfg
   /* the names of the spi devices
    * 0 should be master, 1 should be slave/ 
    * */ 
-  const char * spi_device; 
+  char * spi_device; 
 
   /* the name of the file holding the desired run number*/ 
-  const char * run_file; 
+  char * run_file; 
 
   /* The name of the file holding the last status */ 
-  const char * status_save_file;
+  char * status_save_file;
 
   /* Whether  or not to load the last thresholds from the status file on startup */ 
   int load_thresholds_from_status_file; 
 
 
   /* The output directory for files */ 
-  const char * output_directory; 
+  char * output_directory; 
 
   //scaler goals, in Hz 
   double scaler_goal[BN_NUM_BEAMS]; 
@@ -71,6 +71,9 @@ typedef struct beacon_acq_cfg
 
   /* SW trigger interval (in seconds) */ 
   double sw_trigger_interval; 
+
+  /* Use an exponential distribution for the sw trigger */ 
+  int randomize_sw_trigger; 
 
   // print to screen interval 
   int print_interval; 
@@ -103,6 +106,9 @@ typedef struct beacon_acq_cfg
   // enable ext in 
   int enable_extin; 
 
+  // external trigger delay, in us (will be rounded to nearest 128 ns), up to 8,388.608 us (otherwise will wrap around) 
+  double  extin_trig_delay_us; 
+
   // The width (in 40 ns increments) of the external trigger output
   int trigout_width; 
 
@@ -117,7 +123,7 @@ typedef struct beacon_acq_cfg
 
 
   // Program called to check alignment / align the cal pulser 
-  const char * alignment_command; 
+  char * alignment_command; 
 
   int pretrigger; 
 
@@ -137,7 +143,7 @@ typedef struct beacon_acq_cfg
 
   int realtime_priority; 
 
-  const char * copy_paths_to_rundir; 
+  char * copy_paths_to_rundir; 
 
   int copy_configs; 
 
@@ -151,6 +157,25 @@ typedef struct beacon_acq_cfg
   uint8_t dynamic_masking_threshold; 
   uint8_t dynamic_masking_holdoff; 
   int enable_low_pass_to_trigger; 
+
+  /** Power monitoring commands */ 
+  int try_again_sleep_amount; 
+  int check_power_on; 
+  int adc_threshold_for_on; 
+  int auto_power_on; 
+  int auto_power_off; 
+  int power_monitor_interval; 
+  int nzero_threshold_to_turn_off;
+  double cc_voltage_to_turn_off; 
+  double inv_voltage_to_turn_off; 
+  double cc_voltage_to_turn_on; 
+  double inv_voltage_to_turn_on; 
+
+  char * power_off_command; 
+  char * power_on_command; 
+
+  /* Veto options */ 
+  beacon_veto_options_t veto; 
 
 
 } beacon_acq_cfg_t; 
@@ -168,11 +193,11 @@ int beacon_acq_config_write(const char * file, const beacon_acq_cfg_t * );
 
 typedef struct beacon_copy_cfg
 {
-  const char * remote_hostname; 
+  char * remote_hostname; 
   int port; //ssh port for the remote
-  const char * remote_path; 
-  const char * remote_user; 
-  const char * local_path;
+  char * remote_path; 
+  char * remote_user; 
+  char * local_path;
   int free_space_delete_threshold; //MB 
   int delete_files_older_than;  //days
   int wakeup_interval; //seconds
@@ -187,9 +212,9 @@ int beacon_copy_config_write(const char * file, const beacon_copy_cfg_t * );
 
 typedef struct beacon_start_cfg
 {
-  const char * set_attenuation_cmd; 
-  const char * reconfigure_fpga_cmd; 
-  const char * out_dir; //output directory for hk data 
+  char * set_attenuation_cmd; 
+  char * reconfigure_fpga_cmd; 
+  char * out_dir; //output directory for hk data 
   double desired_rms; 
 }beacon_start_cfg_t; 
 
@@ -202,10 +227,13 @@ int beacon_start_config_write(const char * file, const beacon_start_cfg_t * );
 typedef struct beacon_hkd_cfg
 {
   int interval; //polling interval for HK data . Default 5 seconds 
-  const char * out_dir; //output directory for hk data 
+  char * out_dir; //output directory for hk data 
   int max_secs_per_file; // maximum number of seconds per file. Default 600
-  const char * shm_name; //shared memory name
+  char * shm_name; //shared memory name
+  char * shm_lock_name; //shared memory lock name
   int print_to_screen; //1 to print to screen 
+  char * mate3_url; 
+  int mate3_port; 
 
 } beacon_hk_cfg_t;
 
