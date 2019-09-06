@@ -106,6 +106,9 @@ typedef struct beacon_acq_cfg
   // enable ext in 
   int enable_extin; 
 
+  // external trigger delay, in us (will be rounded to nearest 128 ns), up to 8,388.608 us (otherwise will wrap around) 
+  double  extin_trig_delay_us; 
+
   // The width (in 40 ns increments) of the external trigger output
   int trigout_width; 
 

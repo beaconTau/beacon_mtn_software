@@ -340,6 +340,7 @@ void beacon_acq_config_init ( beacon_acq_cfg_t * c)
   c->apply_attenuations = 0; 
   c->enable_trigout=1; 
   c->enable_extin = 0; 
+  c->extin_trig_delay_us = 0; 
   c->trigout_width = 3; 
   c->disable_trigout_on_exit = 1; 
 
@@ -523,6 +524,7 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
   config_lookup_int(&cfg,"device.calpulser_state", &c->calpulser_state); 
   config_lookup_int(&cfg,"device.enable_trigout", &c->enable_trigout); 
   config_lookup_int(&cfg,"device.enable_extin", &c->enable_extin); 
+  config_lookup_float(&cfg,"device.extin_trig_delay_us", &c->extin_trig_delay_us);
   config_lookup_int(&cfg,"device.trigout_width", &c->trigout_width); 
   config_lookup_int(&cfg,"device.disable_trigout_on_exit", &c->disable_trigout_on_exit); 
   config_lookup_int(&cfg,"device.spi_clock", &c->spi_clock); 
@@ -780,6 +782,10 @@ int beacon_acq_config_write(const char * fi, const beacon_acq_cfg_t * c)
 
   fprintf(f,"  // Whether or not to enable external trigger input\n"); 
   fprintf(f,"  enable_extin = %d;\n\n", c->enable_extin); 
+
+  fprintf(f,"  // Trigger delay on external input, in units of us. Will be rounded to nearest 128 ns. Values above 8,388.608 us will wrap around...\n"); 
+  fprintf(f,"  extin_trig_delay_us = %g;\n\n", c->extin_trig_delay_us); 
+
 
   fprintf(f,"  // The width of the trigger output in 40 ns intervals\n"); 
   fprintf(f,"  trigout_width = %d;\n\n", c->trigout_width); 

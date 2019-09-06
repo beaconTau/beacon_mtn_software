@@ -874,9 +874,9 @@ static int configure_device()
   beacon_configure_trigger_output(device,trigo); 
 
   beacon_ext_input_config_t trigi; 
-
-  beacon_get_ext_trigger_in(device,&trigi); 
+  //beacon_get_ext_trigger_in(device,&trigi);// nothing to preserve, so don't bother! 
   trigi.use_as_trigger = config.enable_extin; 
+  trigi.trig_delay = round(config.extin_trig_delay_us*1e3/128.); 
   beacon_configure_ext_trigger_in(device,trigi); 
 
 
