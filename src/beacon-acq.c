@@ -1125,6 +1125,7 @@ int read_config(int first_time)
   if (first_time)
   {
     beacon_acq_config_init(&config); 
+    beacon_hk_config_init(&hk_config); 
     beacon_start_config_init(&start_config); 
   }
 
