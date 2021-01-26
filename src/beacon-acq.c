@@ -281,6 +281,12 @@ int main(int nargs, char ** args)
       clock_gettime(CLOCK_MONOTONIC_COARSE, &last_check_power); 
     }
 
+    if (the_hk && the_hk->disk_space_kB < 1e6)
+    {
+      fprintf(stderr,"Less than 1 GB of disk space remaining.... quitting!\n"); 
+      fatal(); 
+    }
+
 
 
     sched_yield();
@@ -1182,6 +1188,11 @@ int read_config(int first_time)
       {
         fprintf(stderr, "adc current is %d, below threshold of %d. Either the ADC is not on or beacon-hk is not running... Exiting.\n", the_hk->adc_current, config.adc_threshold_for_on); 
       }
+    }
+    if (the_hk->disk_space_kB < 1e6) 
+    {
+      fprintf(stderr, "Disk space is only %f GB. Will try again later.\n", the_hk->disk_space_kB/1e6); 
+      quick_exit = 1; 
     }
     unlock_shared_hk(); 
     if (quick_exit) 
