@@ -1,7 +1,6 @@
 [Unit]
 Description=Record Beacon data
-Wants=beacon-copy.service beacon-hk.service 
-Requires=beacon-startup.service 
+Wants=beacon-copy.service
 
 [Service] 
 EnvironmentFile=/etc/beacon.cfg
