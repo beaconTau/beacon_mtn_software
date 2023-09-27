@@ -3,8 +3,6 @@
 
 #include "beacon-common.h" 
 #include "beacon.h" 
-#include "beaconhk.h"
-#include "beacondaq.h" 
 #include <stdlib.h>
 
 /** 
@@ -27,7 +25,7 @@ typedef struct beacon_acq_cfg
   /* the names of the spi devices
    * 0 should be master, 1 should be slave/ 
    * */ 
-  char * spi_device; 
+  char * spi_device[2]; 
 
   /* the name of the file holding the desired run number*/ 
   char * run_file; 
@@ -39,20 +37,35 @@ typedef struct beacon_acq_cfg
   int load_thresholds_from_status_file; 
 
 
+  // vpp mode 
+  int vpp_mode; 
+  int coinc_window; 
+  int ncoinc; 
+
+  int enable_coinc; 
+  int enable_pps; 
+
+  int spi_enable; 
+  int gpio_int[2]; 
+
   /* The output directory for files */ 
   char * output_directory; 
 
-  //scaler goals, in Hz 
-  double scaler_goal[BN_NUM_BEAMS]; 
+  int use_fixed_thresholds; 
+
+  uint32_t fixed_threshold[BN_NUM_CHAN];  
+
+  //scaler goals, in Hz, if servo enabled
+  double scaler_goal[BN_NUM_CHAN]; 
+
+  //fraction of trigger scalers that servo scalers run at 
+  double servo_scaler_frac; 
+
+  //weight of 1 Hz scaler in servo (other weight computed)
+  double weight1Hz; 
 
   // trigger mask
   uint32_t trigger_mask; 
-
-  // channel mask
-  uint8_t channel_mask; 
-
-  //channel read_mask
-  uint8_t channel_read_mask; 
 
   // pid goal constats;
   double k_p,k_i, k_d; 
@@ -81,65 +94,12 @@ typedef struct beacon_acq_cfg
   /* The maximum length of a run in seconds */ 
   int run_length; 
 
-  /* The SPI clock speed, in MHz */ 
-  int spi_clock; 
-  
   // number of samples to save 
   int waveform_length;
-
-  /** 1 to enable the phased trigger, 0 otherwise */ 
-  int enable_phased_trigger; 
-
-  // Trigger polarization, see 
-  beacon_trigger_polarization_t trigger_polarization;
-
-  /** cal pulser state , 0 for off, 3 for on (or 2 for nothing)
-   *
-   * I don't think we'd ever want it on. If you do, make sure
-   * you disable the trigout 
-   * */ 
-  int calpulser_state; 
-
-  // enable the trigout
-  int enable_trigout;
-
-  // enable ext in 
-  int enable_extin; 
-
-  // external trigger delay, in us (will be rounded to nearest 128 ns), up to 8,388.608 us (otherwise will wrap around) 
-  double  extin_trig_delay_us; 
-
-  // The width (in 40 ns increments) of the external trigger output
-  int trigout_width; 
-
-  // disable the trigout on exit (this also means
-  // it's temporarily disabled between runs ) 
-  int disable_trigout_on_exit; 
-
-  // Use this to apply the attenuations instead of just
-  // using whatever is on the board. 
-  int apply_attenuations; 
-  uint8_t attenuation[BN_NUM_CHAN]; 
-
-
-  // Program called to check alignment / align the cal pulser 
-  char * alignment_command; 
-
-  int pretrigger; 
-
-  double slow_scaler_weight; 
-
-  double fast_scaler_weight; 
-
-  int subtract_gated; 
-
-  int secs_before_phased_trigger; 
 
   int events_per_file; 
 
   int status_per_file; 
-
-  int n_fast_scaler_avg; 
 
   int realtime_priority; 
 
@@ -147,36 +107,7 @@ typedef struct beacon_acq_cfg
 
   int copy_configs; 
 
-  uint16_t poll_usecs; 
-
-  uint8_t trig_delays[BN_NUM_CHAN]; 
-
-  int use_fixed_thresholds; 
-  uint32_t fixed_threshold[BN_NUM_BEAMS];  
-  int enable_dynamic_masking; 
-  uint8_t dynamic_masking_threshold; 
-  uint8_t dynamic_masking_holdoff; 
-  int enable_low_pass_to_trigger; 
-
-  /** Power monitoring commands */ 
-  int try_again_sleep_amount; 
-  int check_power_on; 
-  int adc_threshold_for_on; 
-  int auto_power_on; 
-  int auto_power_off; 
-  int power_monitor_interval; 
-  int nzero_threshold_to_turn_off;
-  double cc_voltage_to_turn_off; 
-  double inv_voltage_to_turn_off; 
-  double cc_voltage_to_turn_on; 
-  double inv_voltage_to_turn_on; 
-
-  char * power_off_command; 
-  char * power_on_command; 
-
-  /* Veto options */ 
-  beacon_veto_options_t veto; 
-
+  int pretrigger; 
 
 } beacon_acq_cfg_t; 
 
@@ -210,38 +141,6 @@ void beacon_copy_config_init(beacon_copy_cfg_t *);
 int beacon_copy_config_read(const char * file, beacon_copy_cfg_t * ); 
 int beacon_copy_config_write(const char * file, const beacon_copy_cfg_t * ); 
 
-typedef struct beacon_start_cfg
-{
-  char * set_attenuation_cmd; 
-  char * reconfigure_fpga_cmd; 
-  char * out_dir; //output directory for hk data 
-  double desired_rms; 
-}beacon_start_cfg_t; 
-
-
-void beacon_start_config_init(beacon_start_cfg_t *); 
-int beacon_start_config_read(const char * file, beacon_start_cfg_t * ); 
-int beacon_start_config_write(const char * file, const beacon_start_cfg_t * ); 
-
-/* configuration options for beacon-hkd */ 
-typedef struct beacon_hkd_cfg
-{
-  int interval; //polling interval for HK data . Default 5 seconds 
-  char * out_dir; //output directory for hk data 
-  int max_secs_per_file; // maximum number of seconds per file. Default 600
-  char * shm_name; //shared memory name
-  char * shm_lock_name; //shared memory lock name
-  int print_to_screen; //1 to print to screen 
-  char * mate3_url; 
-  int mate3_port; 
-
-} beacon_hk_cfg_t;
-
-
-
-void beacon_hk_config_init(beacon_hk_cfg_t *); 
-int beacon_hk_config_read(const char * file, beacon_hk_cfg_t * ); 
-int beacon_hk_config_write(const char * file, const beacon_hk_cfg_t * ); 
 
 
 #endif

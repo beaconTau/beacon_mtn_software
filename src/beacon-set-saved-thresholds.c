@@ -10,9 +10,9 @@
 
 int main (int nargs, char ** args) 
 {
-  if (nargs != 2 && nargs != BN_NUM_BEAMS +1) 
+  if (nargs != 2 && nargs != BN_NUM_CHAN +1) 
   {
-    fprintf(stderr,"Usage:\tbeacon-set-saved-thresolds thresh\n\t\tbeacon-set-saved-thresholds thresh0 thresh1 thresh2 thresh3 ... thresh14\n"); 
+    fprintf(stderr,"Usage:\tbeacon-set-saved-thresolds thresh\n\t\tbeacon-set-saved-thresholds thresh0 thresh1 thresh2 thresh3 ... thresh7\n"); 
     return 1; 
   }
 
@@ -27,14 +27,13 @@ int main (int nargs, char ** args)
   beacon_status_t save; 
   
   int thresh = atoi(args[1]); 
-  int ibeam ;
-  for (ibeam = 0; ibeam < BN_NUM_BEAMS; ibeam++)
+  for (int ichan = 0; ichan < BN_NUM_CHAN; ichan++)
   {
-    if (nargs > 2 && ibeam > 0) 
+    if (nargs > 2 && ichan > 0) 
     {
-      thresh = atoi(args[1+ibeam]); 
+      thresh = atoi(args[1+ichan]); 
     }
-    save.trigger_thresholds[ibeam] = thresh; 
+    save.channel_trig_thresholds[ichan] = thresh; 
   }
 
   FILE * f = fopen(cfg.status_save_file,"w"); 

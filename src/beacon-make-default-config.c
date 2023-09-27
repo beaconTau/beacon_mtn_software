@@ -25,6 +25,7 @@ int main(int nargs, char ** args)
     beacon_acq_config_init(&cfg); 
     beacon_acq_config_write(args[2],&cfg); 
   }
+  /*
   else if (!strcmp("startup", args[1]))
   {
     beacon_start_cfg_t cfg; 
@@ -38,6 +39,7 @@ int main(int nargs, char ** args)
     beacon_hk_config_init(&cfg); 
     beacon_hk_config_write(args[2],&cfg); 
   }
+  */
   else if (!strcmp("copy", args[1]))
   {
     beacon_copy_cfg_t cfg; 

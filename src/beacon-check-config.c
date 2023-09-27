@@ -35,6 +35,7 @@ int main(int nargs, char ** args)
     return notok; 
   }
 
+  /*
   else if (!strcmp("startup", args[1]))
   {
     beacon_start_cfg_t cfg; 
@@ -68,6 +69,7 @@ int main(int nargs, char ** args)
     }
     return notok; 
   }
+  */
 
   else if (!strcmp("copy", args[1]))
   {
