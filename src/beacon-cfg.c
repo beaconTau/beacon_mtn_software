@@ -27,8 +27,8 @@ void beacon_copy_config_init(beacon_copy_cfg_t * c)
 {
   c->remote_user = strdup("radio") ;
   c->remote_hostname = strdup("beacon_archive");
-  c->local_path = strdup("/data") ;
-  c->remote_path = strdup("/home/radio/data_archive/") ;
+  c->local_path = strdup("/data/daq") ;
+  c->remote_path = strdup("/home/radio/flower_data_archive/") ;
   c->port = 22; //The default for ssh is 22
   c->free_space_delete_threshold = 12000; 
   c->delete_files_older_than = 7;  // ? hopefully this is enough! 
@@ -130,7 +130,7 @@ void beacon_acq_config_init ( beacon_acq_cfg_t * c)
   c->spi_device[1] = strdup("/dev/spidev0.0"); 
   c->run_file = strdup("/beacon/runfile") ;
   c->status_save_file = strdup("/beacon/last.st.bin"); 
-  c->output_directory = strdup("/data/") ; 
+  c->output_directory = strdup("/data/daq/") ; 
 
   c->load_thresholds_from_status_file = 1; 
 
@@ -223,7 +223,7 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
   config_lookup_int(&cfg,"realtime_priority",&c->realtime_priority); 
   config_lookup_int(&cfg,"control.use_fixed_thresholds",&c->use_fixed_thresholds); 
 
-  config_lookup_float(&cfg,"control.1Hz_scaler_weight", &c->weight1Hz); 
+  config_lookup_float(&cfg,"control.scaler_weight_1Hz", &c->weight1Hz); 
   config_lookup_int(&cfg,"control.vpp_mode", &c->vpp_mode); 
   config_lookup_int(&cfg,"control.coinc_window", &c->coinc_window); 
   config_lookup_int(&cfg,"control.ncoinc", &c->ncoinc); 
@@ -244,13 +244,13 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
 
   if (config_lookup_string(&cfg, "device.spi_device.M", &spi))
   {
-    free(c->spi_device);
+    free(c->spi_device[0]);
     c->spi_device[0] = strdup(spi); 
   }
 
   if (config_lookup_string(&cfg, "device.spi_device.S", &spi))
   {
-    free(c->spi_device);
+    free(c->spi_device[1]);
     c->spi_device[1] = strdup(spi); 
   }
 
@@ -308,7 +308,7 @@ int beacon_acq_config_write(const char * fi, const beacon_acq_cfg_t * c)
   fprintf(f,"// These all can be set without restarting\n"); 
   fprintf(f,"control:\n"); 
   fprintf(f,"{\n"); 
-  fprintf(f,"   // scaler goals for each beam, desired rate ( in Hz)\n"); 
+  fprintf(f,"   // scaler goals for each channel, desired rate ( in Hz)\n"); 
   fprintf(f,"   scaler_goal = {\n"); 
   for (i = 0; i < BN_NUM_CHAN; i++)
   {
@@ -316,7 +316,7 @@ int beacon_acq_config_write(const char * fi, const beacon_acq_cfg_t * c)
   }
   fprintf(f,"    };\n\n"); 
 
-  fprintf(f,"   // fixed thresholds for each beam (in case of use_fixed_thresholds)\n"); 
+  fprintf(f,"   // fixed thresholds for each channel (in case of use_fixed_thresholds)\n"); 
   fprintf(f,"   fixed_threshold = {\n"); 
   for (i = 0; i < BN_NUM_CHAN; i++)
   {
@@ -333,7 +333,7 @@ int beacon_acq_config_write(const char * fi, const beacon_acq_cfg_t * c)
   fprintf(f,"   use_fixed_thresholds = %d;\n\n", c->use_fixed_thresholds); 
 
   fprintf(f,"   // 1Hz scaler weight \n"); 
-  fprintf(f,"   1Hz_scaler_weight = %f;\n\n", c->weight1Hz); 
+  fprintf(f,"   scaler_weight_1Hz = %f;\n\n", c->weight1Hz); 
 
 
   fprintf(f,"   // pid loop proportional term\n"); 
@@ -367,19 +367,19 @@ int beacon_acq_config_write(const char * fi, const beacon_acq_cfg_t * c)
   fprintf(f,"   load_thresholds_from_status_file=%d\n\n", c->load_thresholds_from_status_file); 
 
   fprintf(f,"   // use vpp for trigger\n"); 
-  fprintf(f,"   vpp_mode=%d\n\n\n",c->vpp_mode); 
+  fprintf(f,"   vpp_mode=%d;\n\n",c->vpp_mode); 
    
   fprintf(f,"   // coincidence window, in units of clock ticks (125 MHz, so 8 ns/tick)\n"); 
-  fprintf(f,"   coinc_window=%d\n\n\n",c->coinc_window); 
+  fprintf(f,"   coinc_window=%d;\n\n",c->coinc_window); 
 
   fprintf(f,"   // concidences required this is a >, so 0 means 1 channel, 1 means 2 cvhannels, etc.\n"); 
-  fprintf(f,"   ncoinc=%d\n\n\n",c->ncoinc); 
+  fprintf(f,"   ncoinc=%d;\n\n",c->ncoinc); 
 
   fprintf(f,"   // enable coincidence trigger\n"); 
-  fprintf(f,"   enable_coinc_trig=%d\n\n\n",c->enable_coinc); 
+  fprintf(f,"   enable_coinc_trig=%d;\n\n",c->enable_coinc); 
 
   fprintf(f,"   // enable pps trigger\n"); 
-  fprintf(f,"   enable_pps_trig=%d\n\n\n",c->enable_pps); 
+  fprintf(f,"   enable_pps_trig=%d;\n\n",c->enable_pps); 
   fprintf(f,"};\n\n"); 
 
   fprintf(f,"// settings related to the acquisition\n"); 
@@ -392,8 +392,8 @@ int beacon_acq_config_write(const char * fi, const beacon_acq_cfg_t * c)
   fprintf(f,"  // gpios for interrupts\n");
   fprintf(f,"  gpio_int = { M: %d , S: %d ; }\n\n", c->gpio_int[0], c->gpio_int[1]); 
 
-  fprintf(f," //spi enable, negative for active high\n"); 
-  fprintf(f," spi_enable = %d\n", c->spi_enable); 
+  fprintf(f,"  //spi enable, negative for active high\n"); 
+  fprintf(f,"  spi_enable = %d;\n\n", c->spi_enable); 
 
   
   fprintf(f,"  // circular buffer capacity. In-memory storage in between acquisition and writing. Requires restart.\n"); 
