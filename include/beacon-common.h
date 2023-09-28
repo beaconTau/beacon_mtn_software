@@ -17,8 +17,8 @@ float timespec_difference_float(const struct timespec * a, const struct timespec
 
 typedef enum beacon_program
 {
-  BEACON_STARTUP, 
-  BEACON_HK, 
+//  BEACON_STARTUP, 
+ // BEACON_HK, 
   BEACON_ACQ, 
   BEACON_COPY 
 }  beacon_program_t; 

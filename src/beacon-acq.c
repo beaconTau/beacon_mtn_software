@@ -452,7 +452,7 @@ void copy_configs()
   if (!output_dir) return; 
 
   beacon_program_t prog;
-  for (prog = BEACON_STARTUP; prog <= BEACON_COPY; prog++)
+  for (prog = BEACON_ACQ; prog <= BEACON_COPY; prog++)
   {
     beacon_get_cfg_file(&cfgpath, prog); 
     snprintf(bigbuf,sizeof(bigbuf), "cp --backup=simple %s %s/cfg", cfgpath, output_dir); 
