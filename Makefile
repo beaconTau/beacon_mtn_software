@@ -28,8 +28,8 @@ BINDIR=bin
 .PHONY: clean install all doc default-configs
 
 OBJS:= $(addprefix $(BUILDDIR)/, beacon-buf.o beacon-common.o beacon-cfg.o )
-PROGRAMS := $(addprefix $(BINDIR)/, beacon-acq beacon-startup beacon-hk beacon-copy \
-																		beacon-make-default-config beacon-check-config  beacon-current-hk\
+PROGRAMS := $(addprefix $(BINDIR)/, beacon-acq  beacon-copy \
+																		beacon-make-default-config beacon-check-config \
 																		beacon-set-saved-thresholds)
 INCLUDES := $(addprefix $(INCLUDEDIR)/, $(shell ls $(INCLUDEDIR)))
 
@@ -43,8 +43,6 @@ etc/beacon.cfg:
 
 default-configs: $(BINDIR)/beacon-make-default-config 
 	$(BINDIR)/beacon-make-default-config acq cfg/acq.cfg
-	$(BINDIR)/beacon-make-default-config startup cfg/startup.cfg
-	$(BINDIR)/beacon-make-default-config hk cfg/hk.cfg
 	$(BINDIR)/beacon-make-default-config copy cfg/copy.cfg
 
 
@@ -76,9 +74,7 @@ install: $(PROGRAMS) $(INCLUDES) etc/beacon.cfg
 	cp systemd/* /etc/systemd/system/
 	cp scripts/* $(PREFIX)/bin
 	systemctl daemon-reload
-	systemctl enable beacon-startup
-	systemctl enable beacon-acq
-	systemctl enable beacon-hk
+	#systemctl enable beacon-acq
 	systemctl enable beacon-copy
 	mkdir -p /data/daq
 
