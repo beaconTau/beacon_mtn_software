@@ -839,6 +839,7 @@ static int setup()
   pthread_create(&the_wri_thread, 0, write_thread, 0); 
   
 
+  /**
   //increase priority of acquistion thread
   if (config.realtime_priority > 0) 
   {
@@ -846,6 +847,7 @@ static int setup()
     sp.sched_priority = config.realtime_priority; 
     pthread_setschedparam(the_acq_thread, SCHED_FIFO, &sp); 
   }
+  */
 
 
   return 0;
