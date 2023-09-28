@@ -229,7 +229,7 @@ void * acq_thread(void *v)
 
     while (!mem->nfilled && !die) 
     {
-      mem->nfilled = !beacon_wait_for_and_fill_event(device, &mem->header, &mem->event, 100); 
+      mem->nfilled = !beacon_wait_for_and_fill_event(device, &mem->header, &mem->event, 10); 
     }
     beacon_buf_commit(acq_buffer); // we filled it 
   }
@@ -839,7 +839,6 @@ static int setup()
   pthread_create(&the_wri_thread, 0, write_thread, 0); 
   
 
-  /**
   //increase priority of acquistion thread
   if (config.realtime_priority > 0) 
   {
@@ -847,7 +846,6 @@ static int setup()
     sp.sched_priority = config.realtime_priority; 
     pthread_setschedparam(the_acq_thread, SCHED_FIFO, &sp); 
   }
-  */
 
 
   return 0;
