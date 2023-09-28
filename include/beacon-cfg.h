@@ -109,6 +109,9 @@ typedef struct beacon_acq_cfg
 
   int pretrigger; 
 
+  int gain_codes[2][8];  
+  double target_rms; 
+
 } beacon_acq_cfg_t; 
 
 

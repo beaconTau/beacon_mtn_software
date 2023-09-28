@@ -120,6 +120,9 @@ static beacon_status_t * saved_status = 0;
 static volatile int die; 
 
 
+//gain codes
+uint8_t codes[2][BN_NUM_CHAN] = {0};     
+
 /************** Prototypes *********************
  Brief documentation follows. More detailed documentation
  at implementation.
@@ -729,6 +732,42 @@ static int setup()
   // the gpio state should already have been set 
   flower8_dev_t * M = flower8_open(config.spi_device[0], config.spi_enable, config.gpio_int[0],FLOWER8_ENABLE_LOCKING); 
   flower8_dev_t * S = flower8_open(config.spi_device[1], 0, config.gpio_int[1], FLOWER8_ENABLE_LOCKING); 
+
+
+  //set gains 
+  for (int ibd = 0; ibd <2; ibd++) 
+  {
+    flower8_dev_t* bd = ibd == 0 ? M : S; 
+    if (!bd) continue; 
+    uint32_t equalize_mask = 0; 
+    for (int i = 0; i < BN_NUM_CHAN; i++)
+    {
+      if (config.gain_codes[ibd][i] >= 0 && config.gain_codes[ibd][i] < FLOWER8_GAIN_TOO_HIGH)  
+      {
+        equalize_mask |= (1 << i); 
+      }
+    }
+
+    if (equalize_mask != 0xff) 
+    {
+      flower8_equalize(bd, config.target_rms, &codes[ibd][0], equalize_mask | FLOWER8_EQUALIZE_VERBOSE); 
+    }
+
+    for (int i = 0; i < BN_NUM_CHAN; i++) 
+    {
+      if (config.gain_codes[ibd][i] >= 0 && config.gain_codes[ibd][i] < FLOWER8_GAIN_TOO_HIGH)  
+      {
+        codes[ibd][i] = config.gain_codes[ibd][i]; 
+      }
+
+      flower8_set_gains(bd, codes[ibd]); 
+    }
+
+
+
+  }
+
+
 
   device = flower8_bouquet_prepare(M,S); 
 

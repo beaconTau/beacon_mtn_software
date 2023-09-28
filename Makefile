@@ -80,6 +80,7 @@ install: $(PROGRAMS) $(INCLUDES) etc/beacon.cfg
 	systemctl enable beacon-acq
 	systemctl enable beacon-hk
 	systemctl enable beacon-copy
+	mkdir -p /data/daq
 
 
 clean: 

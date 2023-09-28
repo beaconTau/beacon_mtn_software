@@ -175,7 +175,13 @@ void beacon_acq_config_init ( beacon_acq_cfg_t * c)
   c->gpio_int[1] = 89;
 
 
+  for (int i = 0; i < BN_NUM_CHAN; i++) 
+  {
+    c->gain_codes[0][i] = -1; 
+    c->gain_codes[1][i] = -1; 
+  }
 
+  c->target_rms =5; 
 }
 
 
@@ -257,6 +263,15 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
   config_lookup_int(&cfg,"device.spi_enable",&c->spi_enable);
   config_lookup_int(&cfg,"device.gpio_int.M",&c->gpio_int[0]);
   config_lookup_int(&cfg,"device.gpio_int.S",&c->gpio_int[1]);
+  for (int i = 0; i < BN_NUM_CHAN; i++) 
+  {
+    char buf[32];
+    sprintf(buf,"device.gain_codes.M.[%d]",i);
+    config_lookup_int(&cfg,buf, &c->gain_codes[0][i]); 
+    sprintf(buf,"device.gain_codes.S.[%d]",i);
+    config_lookup_int(&cfg,buf, &c->gain_codes[1][i]); 
+  }
+  config_lookup_float(&cfg,"device.target_rms", &c->target_rms); 
 
   config_lookup_int(&cfg,"device.buffer_capacity", &c->buffer_capacity); 
   config_lookup_int(&cfg,"device.waveform_length", &c->waveform_length); 
@@ -405,7 +420,13 @@ int beacon_acq_config_write(const char * fi, const beacon_acq_cfg_t * c)
   fprintf(f,"  //the pretrigger window length, in hardware units\n"); 
   fprintf(f,"  pretrigger = %d;\n\n", c->pretrigger); 
 
- 
+  fprintf(f,"  // fixed gain setting per channel (see table 21 of HMCAD1511 datasheet). Use -1 to equalize to target_rms. \n"); 
+  fprintf(f,"  gain_codes = { M: [ %d,%d,%d,%d,%d,%d,%d,%d ], S: [ %d,%d,%d,%d,%d,%d,%d,%d] }; \n\n",
+          c->gain_codes[0][0], c->gain_codes[0][1], c->gain_codes[0][2], c->gain_codes[0][3], c->gain_codes[0][4], c->gain_codes[0][5], c->gain_codes[0][6], c->gain_codes[0][7], 
+          c->gain_codes[1][0], c->gain_codes[1][1], c->gain_codes[1][2], c->gain_codes[1][3], c->gain_codes[1][4], c->gain_codes[1][5], c->gain_codes[1][6], c->gain_codes[1][7] ); 
+
+  fprintf(f,"  //target rms for equalized channels\n"); 
+  fprintf(f,"  target_rms = %f;\n\n", c->target_rms); 
   fprintf(f,"};\n\n"); 
 
 
