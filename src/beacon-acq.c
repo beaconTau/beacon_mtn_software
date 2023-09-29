@@ -686,6 +686,7 @@ static int configure_device()
   flower8_trigger_config_t trig_cfg = {.vpp_mode = config.vpp_mode, .window = config.coinc_window, .num_coinc = config.ncoinc}; 
   flower8_configure_trigger(device, trig_cfg); 
 
+  flower8_set_trigger_mask(device, config.trigger_mask); 
   return 0; 
 }
 
