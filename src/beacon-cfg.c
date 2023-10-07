@@ -158,8 +158,8 @@ void beacon_acq_config_init ( beacon_acq_cfg_t * c)
   c->run_length = 10800; 
   c->waveform_length = 512; 
   c->pretrigger = 6; 
-  c->events_per_file = 1000; 
-  c->status_per_file = 200; 
+  c->events_per_file = 200; 
+  c->status_per_file = 100; 
   c->realtime_priority = 20; 
 
   c->copy_paths_to_rundir = strdup("/proc/loadavg");
@@ -177,11 +177,12 @@ void beacon_acq_config_init ( beacon_acq_cfg_t * c)
 
   for (int i = 0; i < BN_NUM_CHAN; i++) 
   {
-    c->gain_codes[0][i] = -1; 
+    c->gain_codes[0][i] = i < 4 ? 5 : -1; 
     c->gain_codes[1][i] = -1; 
   }
 
   c->target_rms =5; 
+  c->use_100Hz_scalers = 0; 
 }
 
 
@@ -215,7 +216,9 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
 
   int tmp; 
   if ( config_lookup_int(&cfg,"control.trigger_mask",&tmp))
+  {
     c->trigger_mask = tmp; 
+  }
   config_lookup_float(&cfg,"control.k_p",&c->k_p); 
   config_lookup_float(&cfg,"control.k_i",&c->k_i); 
   config_lookup_float(&cfg,"control.k_d",&c->k_d); 
@@ -272,6 +275,7 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
     config_lookup_int(&cfg,buf, &c->gain_codes[1][i]); 
   }
   config_lookup_float(&cfg,"device.target_rms", &c->target_rms); 
+  config_lookup_int(&cfg,"device.use_100Hz_scalers",&c->use_100Hz_scalers); 
 
   config_lookup_int(&cfg,"device.buffer_capacity", &c->buffer_capacity); 
   config_lookup_int(&cfg,"device.waveform_length", &c->waveform_length); 
@@ -349,6 +353,9 @@ int beacon_acq_config_write(const char * fi, const beacon_acq_cfg_t * c)
 
   fprintf(f,"   // 1Hz scaler weight \n"); 
   fprintf(f,"   scaler_weight_1Hz = %f;\n\n", c->weight1Hz); 
+
+  fprintf(f,"   // use 100 Hz scalers instead of 100 mHz scalers...\n"); 
+  fprintf(f,"   use_100Hz_scalers = %d;\n\n", c->use_100Hz_scalers); 
 
 
   fprintf(f,"   // pid loop proportional term\n"); 

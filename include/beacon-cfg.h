@@ -112,6 +112,8 @@ typedef struct beacon_acq_cfg
   int gain_codes[2][8];  
   double target_rms; 
 
+  int use_100Hz_scalers; 
+
 } beacon_acq_cfg_t; 
 
 
