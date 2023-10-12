@@ -66,8 +66,6 @@ install: $(PROGRAMS) $(INCLUDES) etc/beacon.cfg
 	install -d $(PREFIX)
 	install -d $(PREFIX)/bin
 	install $(PROGRAMS) $(PREFIX)/bin
-	install -d $(PREFIX)/cfg
-	cp cfg/* $(PREFIX)/cfg 
 	install etc/beacon.cfg /etc
 	install -d $(PREFIX)/include
 	install $(INCLUDES) $(PREFIX)/include 
@@ -77,6 +75,10 @@ install: $(PROGRAMS) $(INCLUDES) etc/beacon.cfg
 	#systemctl enable beacon-acq
 	systemctl enable beacon-copy
 	mkdir -p /data/daq
+
+install-cfg:
+	install -d $(PREFIX)/cfg
+	cp cfg/* $(PREFIX)/cfg 
 
 
 clean: 
