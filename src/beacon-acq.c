@@ -683,7 +683,7 @@ static int configure_device()
     dly = 0; 
   }
 
-  uint32_t delay_cycles = dly / 25; 
+  uint32_t delay_cycles = dly / 40; 
   flower8_set_delayed_pps_delay(device, delay_cycles); 
 
   //setup the trigger_mode
