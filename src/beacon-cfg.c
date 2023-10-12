@@ -170,6 +170,7 @@ void beacon_acq_config_init ( beacon_acq_cfg_t * c)
   c->ncoinc = 2; 
   c->enable_coinc = 1;
   c->enable_pps = 0;
+  c->pps_delay = 0; 
   c->spi_enable = -61; 
   c->gpio_int[0] = 44;
   c->gpio_int[1] = 89;
@@ -238,6 +239,7 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
   config_lookup_int(&cfg,"control.ncoinc", &c->ncoinc); 
   config_lookup_int(&cfg,"control.enable_coinc_trig", &c->enable_coinc); 
   config_lookup_int(&cfg,"control.enable_pps_trig", &c->enable_pps); 
+  config_lookup_float(&cfg,"control.pps_delay", &c->pps_delay); 
 
   const char * status_save = 0; 
 
@@ -402,6 +404,9 @@ int beacon_acq_config_write(const char * fi, const beacon_acq_cfg_t * c)
 
   fprintf(f,"   // enable pps trigger\n"); 
   fprintf(f,"   enable_pps_trig=%d;\n\n",c->enable_pps); 
+
+  fprintf(f,"   // pps delay (ns)\n"); 
+  fprintf(f,"   pps_delay=%f;\n\n",c->pps_delay); 
   fprintf(f,"};\n\n"); 
 
   fprintf(f,"// settings related to the acquisition\n"); 

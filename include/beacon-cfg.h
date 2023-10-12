@@ -44,6 +44,7 @@ typedef struct beacon_acq_cfg
 
   int enable_coinc; 
   int enable_pps; 
+  double pps_delay; 
 
   int spi_enable; 
   int gpio_int[2]; 

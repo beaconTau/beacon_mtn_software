@@ -676,6 +676,16 @@ static int configure_device()
 
   flower8_set_variable_scaler_speed(device, config.use_100Hz_scalers ? FLOWER8_SCAL_100Hz : FLOWER8_SCAL_100mHz); 
 
+  double dly = config.pps_delay; 
+  if (dly < 0)
+  {
+    fprintf(stderr,"Negative delays not implemented yet\n"); 
+    dly = 0; 
+  }
+
+  uint32_t delay_cycles = dly / 25; 
+  flower8_set_delayed_pps_delay(device, delay_cycles); 
+
   //setup the trigger_mode
   flower8_trigger_enables_t ten = { .enable_coinc = config.enable_coinc, .enable_pps = config.enable_pps}; 
 
