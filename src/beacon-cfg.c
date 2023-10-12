@@ -136,7 +136,7 @@ void beacon_acq_config_init ( beacon_acq_cfg_t * c)
 
   int i; 
   for ( i = 0; i < BN_NUM_CHAN; i++) c->scaler_goal[i] = 500; 
-  for ( i = 0; i < BN_NUM_CHAN; i++) c->fixed_threshold[i] =  20; 
+  for ( i = 0; i < BN_NUM_CHAN; i++) c->fixed_threshold[i] =  i < 4 ?  15 : 40; 
 
   c->use_fixed_thresholds = 1;
   c->servo_scaler_frac = 0.9; 
@@ -148,12 +148,13 @@ void beacon_acq_config_init ( beacon_acq_cfg_t * c)
   c->min_threshold = 5;
   c->weight1Hz = 0.5; 
   c->max_threshold_increase = 5; 
-  c->trigger_mask = 0xff; 
+  c->trigger_mask = 0xf; 
   c->buffer_capacity = 256; 
   c->monitor_interval = 1.0; 
   c->sw_trigger_interval = 1; 
   c->randomize_sw_trigger = 0; 
   c->print_interval = 10; 
+  c->swap_boards = 0; 
 
   c->run_length = 10800; 
   c->waveform_length = 512; 
@@ -167,9 +168,9 @@ void beacon_acq_config_init ( beacon_acq_cfg_t * c)
 
   c->vpp_mode = 0; 
   c->coinc_window = 3; 
-  c->ncoinc = 2; 
+  c->ncoinc = 3; 
   c->enable_coinc = 1;
-  c->enable_pps = 0;
+  c->enable_pps = 1;
   c->pps_delay = 0; 
   c->spi_enable = -61; 
   c->gpio_int[0] = 44;
@@ -178,8 +179,8 @@ void beacon_acq_config_init ( beacon_acq_cfg_t * c)
 
   for (int i = 0; i < BN_NUM_CHAN; i++) 
   {
-    c->gain_codes[0][i] = i < 4 ? 5 : -1; 
-    c->gain_codes[1][i] = -1; 
+    c->gain_codes[0][i] = i < 4 ? 0 : 5; 
+    c->gain_codes[1][i] = 5; 
   }
 
   c->target_rms =5; 
@@ -282,6 +283,7 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
   config_lookup_int(&cfg,"device.buffer_capacity", &c->buffer_capacity); 
   config_lookup_int(&cfg,"device.waveform_length", &c->waveform_length); 
   config_lookup_int(&cfg,"device.pretrigger", &c->pretrigger); 
+  config_lookup_int(&cfg,"device.swap_boards", &c->swap_boards); 
 
 
   const char * run_file ; 
@@ -422,7 +424,10 @@ int beacon_acq_config_write(const char * fi, const beacon_acq_cfg_t * c)
   fprintf(f,"  //spi enable, negative for active high\n"); 
   fprintf(f,"  spi_enable = %d;\n\n", c->spi_enable); 
 
-  
+   fprintf(f,"  //swap the two boards (M <->S )\n"); 
+  fprintf(f,"  swap_boards = %d;\n\n", c->swap_boards); 
+
+ 
   fprintf(f,"  // circular buffer capacity. In-memory storage in between acquisition and writing. Requires restart.\n"); 
   fprintf(f,"  buffer_capacity = %d;\n\n", c->buffer_capacity); 
 

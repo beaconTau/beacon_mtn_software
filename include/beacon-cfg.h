@@ -23,7 +23,7 @@ typedef struct beacon_acq_cfg
 {
 
   /* the names of the spi devices
-   * 0 should be master, 1 should be slave/ 
+   * 0 should be M, 1 should be S 
    * */ 
   char * spi_device[2]; 
 
@@ -35,6 +35,9 @@ typedef struct beacon_acq_cfg
 
   /* Whether  or not to load the last thresholds from the status file on startup */ 
   int load_thresholds_from_status_file; 
+
+  // swap the two boards 
+  int swap_boards; 
 
 
   // vpp mode 

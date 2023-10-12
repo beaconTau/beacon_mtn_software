@@ -743,8 +743,10 @@ static int setup()
 
   //open the devices and configure properly
   // the gpio state should already have been set 
-  flower8_dev_t * M = flower8_open(config.spi_device[0], config.spi_enable, config.gpio_int[0],FLOWER8_ENABLE_LOCKING); 
-  flower8_dev_t * S = flower8_open(config.spi_device[1], 0, config.gpio_int[1], FLOWER8_ENABLE_LOCKING); 
+  int Mindex = config.swap_boards ? 1 : 0; 
+  int Sindex = config.swap_boards ? 0 : 1; 
+  flower8_dev_t * M = flower8_open(config.spi_device[Mindex], config.spi_enable, config.gpio_int[Mindex],FLOWER8_ENABLE_LOCKING); 
+  flower8_dev_t * S = flower8_open(config.spi_device[Sindex], 0, config.gpio_int[Sindex], FLOWER8_ENABLE_LOCKING); 
 
 
   //set gains 
