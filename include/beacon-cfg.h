@@ -45,6 +45,7 @@ typedef struct beacon_acq_cfg
   int coinc_window; 
   int ncoinc; 
 
+  int enable_phased;
   int enable_coinc; 
   int enable_pps; 
   double pps_delay; 
@@ -57,25 +58,41 @@ typedef struct beacon_acq_cfg
 
   int use_fixed_thresholds; 
 
-  uint32_t fixed_threshold[BN_NUM_CHAN];  
+  uint32_t fixed_coinc_threshold[BN_NUM_CHAN];  
+  uint32_t fixed_phased_threshold[BN_NUM_BEAMS];  
+
 
   //scaler goals, in Hz, if servo enabled
-  double scaler_goal[BN_NUM_CHAN]; 
+  double coinc_scaler_goal[BN_NUM_CHAN]; 
+  double phased_scaler_goal[BN_NUM_BEAMS]; 
+
 
   //fraction of trigger scalers that servo scalers run at 
-  double servo_scaler_frac; 
+  double coinc_servo_scaler_frac; 
+  double phased_servo_scaler_frac; 
+
 
   //weight of 1 Hz scaler in servo (other weight computed)
   double weight1Hz; 
 
-  // trigger mask
-  uint32_t trigger_mask; 
+  // trigger masks
+  uint32_t coinc_trigger_mask; 
+  uint32_t phased_trigger_mask_lower; 
+  uint32_t phased_trigger_mask_upper; 
 
-  // pid goal constats;
+
+
+  // pid goal constants for coinc trigger;
   double k_p,k_i, k_d; 
 
+  // pid goal constants for phased trigger;
+  double k_p_p,k_i_p, k_d_p; 
+
+
   // puts a floor on the thresholds
-  uint16_t min_threshold;
+  uint16_t min_coinc_threshold;
+  uint16_t min_phased_threshold;
+
 
   // the maximum the threshold can increase in a  step 
   uint16_t max_threshold_increase; 

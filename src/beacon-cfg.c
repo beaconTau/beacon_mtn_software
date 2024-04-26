@@ -135,20 +135,33 @@ void beacon_acq_config_init ( beacon_acq_cfg_t * c)
   c->load_thresholds_from_status_file = 1; 
 
   int i; 
-  for ( i = 0; i < BN_NUM_CHAN; i++) c->scaler_goal[i] = 500; 
-  for ( i = 0; i < BN_NUM_CHAN; i++) c->fixed_threshold[i] =  i < 4 ?  15 : 40; 
+  for ( i = 0; i < BN_NUM_CHAN; i++) c->coinc_scaler_goal[i] = 500; 
+  for ( i = 0; i < BN_NUM_CHAN; i++) c->fixed_coinc_threshold[i] =  i < 4 ?  15 : 40; 
+
+  for ( i = 0; i < BN_NUM_BEAMS; i++) c->phased_scaler_goal[i] = 500; 
+  for ( i = 0; i < BN_NUM_BEAMS; i++) c->fixed_phased_threshold[i] =  i < 4 ?  15 : 40; 
 
   c->use_fixed_thresholds = 1;
-  c->servo_scaler_frac = 0.9; 
+  
+  c->coinc_servo_scaler_frac = 0.9; 
+  c->phased_servo_scaler_frac = 0.9; 
+
 
   //TODO tune this 
   c->k_p = 10; 
   c->k_i = 0; 
   c->k_d = 0; 
-  c->min_threshold = 5;
+  c->k_p_p = 10; 
+  c->k_i_p = 0; 
+  c->k_d_p = 0; 
+  c->min_coinc_threshold = 5;
+  c->min_phased_threshold = 5;
   c->weight1Hz = 0.5; 
   c->max_threshold_increase = 5; 
-  c->trigger_mask = 0xf; 
+  c->coinc_trigger_mask = 0xf; 
+  c->phased_trigger_mask_lower = 0x1fffff; //21 beams here
+  c->phased_trigger_mask_lower = 0x1fffff; //other 21 here 
+
   c->buffer_capacity = 256; 
   c->monitor_interval = 1.0; 
   c->sw_trigger_interval = 1; 
@@ -169,7 +182,8 @@ void beacon_acq_config_init ( beacon_acq_cfg_t * c)
   c->vpp_mode = 0; 
   c->coinc_window = 3; 
   c->ncoinc = 3; 
-  c->enable_coinc = 1;
+  c->enable_phased = 1;
+  c->enable_coinc = 0;
   c->enable_pps = 1;
   c->pps_delay = 0; 
   c->spi_enable = -61; 
@@ -209,22 +223,47 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
   {
     char buf[128]; 
     int tmp; 
-    sprintf(buf, "control.scaler_goal.ch%d",i); 
-    config_lookup_float(&cfg, buf, &c->scaler_goal[i]); 
-    sprintf(buf, "control.fixed_threshold.ch%d",i); 
+    sprintf(buf, "control.coinc_scaler_goal.ch%d",i); 
+    config_lookup_float(&cfg, buf, &c->coinc_scaler_goal[i]); 
+    sprintf(buf, "control.fixed_coinc_threshold.ch%d",i); 
+    config_lookup_int(&cfg, buf, &tmp); 
+    c->fixed_coinc_threshold[i] = tmp; 
+  }
+
+   int i; 
+  for (i = 0; i < BN_NUM_BEAMS; i++) 
+  {
+    char buf[128]; 
+    int tmp; 
+    sprintf(buf, "control.phased_scaler_goal.ch%d",i); 
+    config_lookup_float(&cfg, buf, &c->phased_scaler_goal[i]); 
+    sprintf(buf, "control.fixed_phased_threshold.ch%d",i); 
     config_lookup_int(&cfg, buf, &tmp); 
     c->fixed_threshold[i] = tmp; 
   }
 
   int tmp; 
-  if ( config_lookup_int(&cfg,"control.trigger_mask",&tmp))
+  if ( config_lookup_int(&cfg,"control.coinc_trigger_mask",&tmp))
   {
-    c->trigger_mask = tmp; 
+    c->coinc_trigger_mask = tmp; 
+  }
+  if ( config_lookup_int(&cfg,"control.phased_trigger_mask_lower",&tmp))
+  {
+    c->phased_trigger_mask_lower = tmp; 
+  }  
+  if ( config_lookup_int(&cfg,"control.phased_trigger_mask_upper",&tmp))
+  {
+    c->phased_trigger_mask_upper = tmp; 
   }
   config_lookup_float(&cfg,"control.k_p",&c->k_p); 
   config_lookup_float(&cfg,"control.k_i",&c->k_i); 
   config_lookup_float(&cfg,"control.k_d",&c->k_d); 
-  config_lookup_int(&cfg,"control.min_threshold",&tmp);
+  config_lookup_float(&cfg,"control.k_p_p",&c->k_p_p); 
+  config_lookup_float(&cfg,"control.k_i_p",&c->k_i_p); 
+  config_lookup_float(&cfg,"control.k_d_p",&c->k_d_p); 
+  config_lookup_int(&cfg,"control.min_coinc_threshold",&tmp);
+  c->min_threshold = tmp;
+  config_lookup_int(&cfg,"control.min_phased_threshold",&tmp);
   c->min_threshold = tmp;
   config_lookup_int(&cfg,"control.max_threshold_increase",&tmp);   
   c->max_threshold_increase = tmp; 
@@ -238,6 +277,7 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
   config_lookup_int(&cfg,"control.vpp_mode", &c->vpp_mode); 
   config_lookup_int(&cfg,"control.coinc_window", &c->coinc_window); 
   config_lookup_int(&cfg,"control.ncoinc", &c->ncoinc); 
+  config_lookup_int(&cfg,"control.enable_phased_trig", &c->enable_phased); 
   config_lookup_int(&cfg,"control.enable_coinc_trig", &c->enable_coinc); 
   config_lookup_int(&cfg,"control.enable_pps_trig", &c->enable_pps); 
   config_lookup_float(&cfg,"control.pps_delay", &c->pps_delay); 
@@ -332,25 +372,46 @@ int beacon_acq_config_write(const char * fi, const beacon_acq_cfg_t * c)
   fprintf(f,"control:\n"); 
   fprintf(f,"{\n"); 
   fprintf(f,"   // scaler goals for each channel, desired rate ( in Hz)\n"); 
-  fprintf(f,"   scaler_goal = {\n"); 
+  fprintf(f,"   coinc_scaler_goal = {\n"); 
   for (i = 0; i < BN_NUM_CHAN; i++)
   {
-    fprintf(f, "     ch%d : %g;\n", i, c->scaler_goal[i]); 
+    fprintf(f, "     ch%d : %g;\n", i, c->coinc_scaler_goal[i]); 
   }
   fprintf(f,"    };\n\n"); 
 
   fprintf(f,"   // fixed thresholds for each channel (in case of use_fixed_thresholds)\n"); 
-  fprintf(f,"   fixed_threshold = {\n"); 
+  fprintf(f,"   fixed_coinc_threshold = {\n"); 
   for (i = 0; i < BN_NUM_CHAN; i++)
   {
-    fprintf(f, "     ch%d : %u;\n", i, c->fixed_threshold[i]); 
+    fprintf(f, "     ch%d : %u;\n", i, c->fixed_coinc_threshold[i]); 
   }
   fprintf(f,"    };\n\n"); 
 
+  fprintf(f,"   //the channels allowed to participate in the trigger\n"); 
+  fprintf(f,"   coinc_trigger_mask = 0x%x;\n\n", c->coinc_trigger_mask);  
+  
 
+
+  fprintf(f,"   // scaler goals for each beam, desired rate ( in Hz)\n"); 
+  fprintf(f,"   phased_scaler_goal = {\n"); 
+  for (i = 0; i < BN_NUM_BEAMS; i++)
+  {
+    fprintf(f, "     bm%d : %g;\n", i, c->phased_scaler_goal[i]); 
+  }
+  fprintf(f,"    };\n\n"); 
+
+  fprintf(f,"   // fixed thresholds for each beam (in case of use_fixed_thresholds)\n"); 
+  fprintf(f,"   fixed_phased_threshold = {\n"); 
+  for (i = 0; i < BN_NUM_BEAMS; i++)
+  {
+    fprintf(f, "     bm%d : %u;\n", i, c->fixed_phased_threshold[i]); 
+  }
+  fprintf(f,"    };\n\n"); 
 
   fprintf(f,"   //the beams allowed to participate in the trigger\n"); 
-  fprintf(f,"   trigger_mask = 0x%x;\n\n", c->trigger_mask);  
+  fprintf(f,"   phased_trigger_mask_lower = 0x%x;\n\n", c->phased_trigger_mask_lower);  
+  fprintf(f,"   phased_trigger_mask_upper = 0x%x;\n\n", c->phased_trigger_mask_upper);  
+
 
   fprintf(f,"   // use fixed thresholds (don't servo!) \n"); 
   fprintf(f,"   use_fixed_thresholds = %d;\n\n", c->use_fixed_thresholds); 
@@ -362,17 +423,29 @@ int beacon_acq_config_write(const char * fi, const beacon_acq_cfg_t * c)
   fprintf(f,"   use_100Hz_scalers = %d;\n\n", c->use_100Hz_scalers); 
 
 
-  fprintf(f,"   // pid loop proportional term\n"); 
+  fprintf(f,"   // coinc pid loop proportional term\n"); 
   fprintf(f,"   k_p = %g;\n\n", c->k_p); 
 
-  fprintf(f,"   // pid loop integral term\n"); 
+  fprintf(f,"   // coinc pid loop integral term\n"); 
   fprintf(f,"   k_i = %g;\n\n", c->k_i);
 
-  fprintf(f,"   // pid loop differential term\n"); 
+  fprintf(f,"   // coinc pid loop differential term\n"); 
   fprintf(f,"   k_d = %g;\n\n", c->k_d);
 
-  fprintf(f,"   // puts a floor on the thresholds\n"); 
-  fprintf(f,"   min_threshold=%u;\n\n", c->min_threshold);
+  fprintf(f,"   // phased pid loop proportional term\n"); 
+  fprintf(f,"   k_p_p = %g;\n\n", c->k_p_p); 
+
+  fprintf(f,"   // phased pid loop integral term\n"); 
+  fprintf(f,"   k_i_p = %g;\n\n", c->k_i_p);
+
+  fprintf(f,"   // phased pid loop differential term\n"); 
+  fprintf(f,"   k_d_p = %g;\n\n", c->k_d_p);
+
+  fprintf(f,"   // puts a floor on the coinc thresholds\n"); 
+  fprintf(f,"   min_threshold=%u;\n\n", c->min_coinc_threshold);
+
+  fprintf(f,"   // puts a floor on the phased thresholds\n"); 
+  fprintf(f,"   min_threshold=%u;\n\n", c->min_phased_threshold);
 
   fprintf(f,"   // max threshold increase per step \n"); 
   fprintf(f,"   max_threshold_increase=%u;\n\n", c->max_threshold_increase); 
@@ -400,6 +473,9 @@ int beacon_acq_config_write(const char * fi, const beacon_acq_cfg_t * c)
 
   fprintf(f,"   // concidences required this is a >, so 0 means 1 channel, 1 means 2 cvhannels, etc.\n"); 
   fprintf(f,"   ncoinc=%d;\n\n",c->ncoinc); 
+
+  fprintf(f,"   // enable phased trigger\n"); 
+  fprintf(f,"   enable_phased_trig=%d;\n\n",c->enable_phased); 
 
   fprintf(f,"   // enable coincidence trigger\n"); 
   fprintf(f,"   enable_coinc_trig=%d;\n\n",c->enable_coinc); 

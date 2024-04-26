@@ -66,23 +66,35 @@ typedef struct acq_buffer
 } acq_buffer_t;
 
 
-//servo state for flower
-typedef struct flower8_servo_state
+//coinc servo state for flower
+typedef struct flower8_coinc_servo_state
 {
   float value[BN_NUM_CHAN]; 
   float last_value[BN_NUM_CHAN]; 
   float error[BN_NUM_CHAN]; 
   float last_error[BN_NUM_CHAN]; 
   float sum_error[BN_NUM_CHAN]; 
-} flower8_servo_state_t; 
+} flower8_coinc_servo_state_t; 
+
+//phased servo state for flower
+typedef struct flower8_phased_servo_state
+{
+  float value[BN_NUM_BEAMS]; 
+  float last_value[BN_NUM_BEAMS]; 
+  float error[BN_NUM_BEAMS]; 
+  float last_error[BN_NUM_BEAMS]; 
+  float sum_error[BN_NUM_BEAMS]; 
+} flower8_phased_servo_state_t; 
 
 
 /* this is what is stored within the monitor buffer */ 
 typedef struct monitor_buffer
 {
   beacon_status_t status; //status before
-  float thresholds[BN_NUM_CHAN]; //thresholds when written 
-  flower8_servo_state_t servo; 
+  float coinc_thresholds[BN_NUM_CHAN]; //thresholds when written 
+  flower8_coinc_servo_state_t servo; 
+  float phased_thresholds[BN_NUM_BEAMS]; //thresholds when written 
+  flower8_phased_servo_state_t servo; 
 } monitor_buffer_t; 
 
 /**************Static vars *******************************/
@@ -272,7 +284,7 @@ static void servo_state_print(FILE *f , const flower8_servo_state_t * st)
  }
 }
 
-static void update_flower_servo_state(flower8_servo_state_t *st, const beacon_status_t * ds) 
+static void update_flower_coinc_servo_state(flower8_coinc_servo_state_t *st, const beacon_status_t * ds) 
 {
 
   float w1 = config.weight1Hz; 
@@ -288,7 +300,28 @@ static void update_flower_servo_state(flower8_servo_state_t *st, const beacon_st
     st->last_value[i] = st->value[i]; 
     st->value[i] = val; 
     st->last_error[i] = st->error[i]; 
-    st->error[i] = (val-config.scaler_goal[i]); 
+    st->error[i] = (val-config.channel_scaler_goal[i]); 
+    st->sum_error[i] += st->error[i]; 
+  } 
+}
+
+static void update_flower_phased_servo_state(flower8_phased_servo_state_t *st, const beacon_status_t * ds) 
+{
+
+  float w1 = config.weight1Hz; 
+  float wo = 1-w1; 
+
+
+  double ofactor = ds->scaler_type == 1 ?  100 : 0.1; //
+  
+  for (int i = 0; i < BN_NUM_BEAMS; i++)
+  {
+
+    float val =  wo * ofactor*ds->beam_servo_scalers[i][SCALER_VARIABLE]+ w1  * ds->beam_servo_scalers[i][SCALER_1HZ]; 
+    st->last_value[i] = st->value[i]; 
+    st->value[i] = val; 
+    st->last_error[i] = st->error[i]; 
+    st->error[i] = (val-config.beam_scaler_goal[i]); 
     st->sum_error[i] += st->error[i]; 
   } 
 }
@@ -317,7 +350,9 @@ void * monitor_thread(void *v)
 
   double sw_trig_interval =  get_next_sw_trig_interval(); 
 
-  flower8_servo_state_t servo = {0};
+  flower8_coinc_servo_state_t coinc_servo = {0};
+  flower8_phased_servo_state_t phased_servo = {0};
+
 
   while(!die) 
   {
@@ -343,44 +378,84 @@ void * monitor_thread(void *v)
 
       beacon_fill_status(device, st); 
      
- //     beacon_status_print(stdout,st); 
-
-
-      update_flower_servo_state(&servo, st); 
+      //beacon_status_print(stdout,st); 
+      //maybe put if enable_coinc to save the trouble of servoing an off trigger type
+      update_flower_coinc_servo_state(&coinc_servo, st); 
 
       for (int ichan = 0; ichan < BN_NUM_CHAN; ichan++)
       {
 
         if (config.use_fixed_thresholds) 
         {
-          mb.thresholds[ichan] = config.fixed_threshold[ichan]; 
+          mb.channel_thresholds[ichan] = config.fixed_channel_threshold[ichan]; 
 
         }
         else
         {
           // modify threshold 
-          double dthreshold =   config.k_p * servo.error[ichan] + config.k_i * servo.sum_error[ichan] + config.k_i * (servo.error[ichan] - servo.last_error[ichan]);
+          double dthreshold =   config.k_p * coinc_servo.error[ichan] + config.k_i * coinc_servo.sum_error[ichan] + config.k_i * (coinc_servo.error[ichan] - coinc_servo.last_error[ichan]);
           
           //cap the threshold increase at each step 
           if (dthreshold > config.max_threshold_increase) dthreshold = config.max_threshold_increase;
 
-          mb.thresholds[ichan]+= dthreshold;
+          mb.channel_thresholds[ichan]+= dthreshold;
 
-          if(mb.thresholds[ichan] < config.min_threshold){
-            mb.thresholds[ichan] = config.min_threshold;
+          if(mb.channel_thresholds[ichan] < config.min_channel_threshold){
+            mb.channel_thresholds[ichan] = config.min_channel_threshold;
           }
 
         }
 
-        mb.status.channel_servo_thresholds[ichan] = mb.thresholds[ichan]; 
-        mb.status.channel_trig_thresholds[ichan] = clamp(mb.thresholds[ichan] / config.servo_scaler_frac,4,120); 
+        mb.status.channel_servo_thresholds[ichan] = mb.channel_thresholds[ichan]; 
+        mb.status.channel_trig_thresholds[ichan] = clamp(mb.channel_thresholds[ichan] / config.coinc_servo_scaler_frac,4,120); 
       }
 
       //apply the thresholds 
       flower8_set_thresholds(device, mb.status.channel_trig_thresholds, mb.status.channel_servo_thresholds, 0xff); 
       
       //copy over the current control status 
-      if (!config.use_fixed_thresholds) memcpy(&mb.servo, &servo, sizeof(servo)); 
+      if (!config.use_fixed_thresholds) memcpy(&mb.coinc_servo, &coinc_servo, sizeof(coinc_servo)); 
+      
+
+
+      update_flower_phased_servo_state(&phased_servo, st); 
+      for (int ibeam = 0; ibeam < BN_NUM_BEAMS; ibeam++)
+      {
+
+        if (config.use_fixed_thresholds) 
+        {
+          mb.beam_thresholds[ibeam] = config.fixed_beam_threshold[ibeam]; 
+
+        }
+        else
+        {
+          // modify threshold 
+          double dthreshold =   config.k_p_p * phased_servo.error[ibeam] + config.k_i_p * phased_servo.sum_error[ibeam] + config.k_i_p * (phased_servo.error[ibeam] - phased_servo.last_error[ibeam]);
+          
+          //cap the threshold increase at each step 
+          //if (dthreshold > config.max_threshold_increase) dthreshold = config.max_threshold_increase;
+
+          mb.beam_thresholds[ibeam]+= dthreshold;
+
+          if(mb.phased_thresholds[ibeam] < config.min_phased_threshold){
+            mb.phased_thresholds[ibeam] = config.min_phased_threshold;
+          }
+
+        }
+
+        mb.status.beam_servo_thresholds[ibeam] = mb.beam_thresholds[ibeam]; 
+        mb.status.beam_trig_thresholds[ibeam] = clamp(mb.beam_thresholds[ibeam] / config.phased_servo_scaler_frac,100,4095); 
+      }
+
+      //apply the thresholds 
+      flower8_set_coinc_thresholds(device, mb.status.channel_trig_thresholds, mb.status.channel_servo_thresholds, 0xff); 
+      flower8_set_phased_thresholds(device,mb.status.beam_trig_thresholds,mb.status.beam_servo_thresholds);
+      //copy over the current control status 
+      if (!config.use_fixed_thresholds) 
+      {
+        memcpy(&mb.coinc_servo, &coinc_servo, sizeof(coinc_servo)); 
+        memcpy(&mb.phased_servo, &phased_servo, sizeof(phased_servo)); 
+      }
 
       beacon_buf_push(mon_buffer, &mb);
       memcpy(&last_mon,&now, sizeof(now)); 
@@ -485,7 +560,9 @@ void * write_thread(void *v)
 
   beacon_status_t * last_status = (saved_status && saved_status != MAP_FAILED)  ? saved_status : malloc(sizeof(beacon_status_t)); 
 
-  flower8_servo_state_t last_servo; 
+  flower8_coinc_servo_state_t last_coinc_servo; 
+  flower8_phased_servo_state_t last_phased_servo; 
+
 
   beacon_fill_status(device, last_status); 
 
@@ -550,7 +627,11 @@ void * write_thread(void *v)
       printf("  write rate:  %g Hz\n", (num_events == 0) ? 0. :  ((float) num_events) / (now - last_print_out)); 
       printf("  write buffer occupancy: %zu \n", occupancy); 
       beacon_status_print(stdout, last_status); 
-      if (!config.use_fixed_thresholds) servo_state_print(stdout, &last_servo); 
+      if (!config.use_fixed_thresholds) 
+      {
+        coinc_servo_state_print(stdout, &last_coinc_servo); 
+        phased_servo_state_print(stdout, &last_phased_servo); 
+      }
       last_print_out = now; 
       num_events = 0;
     }
@@ -618,7 +699,11 @@ void * write_thread(void *v)
       }
 
       memcpy(last_status, &mon->status, sizeof(*last_status)); 
-      if (!config.use_fixed_thresholds) memcpy(&last_servo, &mon->servo, sizeof(last_servo)); 
+      if (!config.use_fixed_thresholds) 
+      {
+        memcpy(&last_coinc_servo, &mon->coinc_servo, sizeof(last_coinc_servo)); 
+        memcpy(&last_phased_servo, &mon->phased_servo, sizeof(last_phased_servo)); 
+      }
 
       //update the mmaped file if necessary 
       if ( saved_status == last_status) msync(saved_status, sizeof(beacon_status_t),MS_ASYNC); 
@@ -687,7 +772,7 @@ static int configure_device()
   flower8_set_delayed_pps_delay(device, delay_cycles); 
 
   //setup the trigger_mode
-  flower8_trigger_enables_t ten = { .enable_coinc = config.enable_coinc, .enable_pps = config.enable_pps}; 
+  flower8_trigger_enables_t ten = { .enable_phased=config.enable_phased, .enable_coinc = config.enable_coinc, .enable_pps = config.enable_pps}; 
 
   flower8_set_trigger_enables(device, ten);
 
@@ -698,7 +783,9 @@ static int configure_device()
   flower8_trigger_config_t trig_cfg = {.vpp_mode = config.vpp_mode, .window = config.coinc_window, .num_coinc = config.ncoinc}; 
   flower8_configure_trigger(device, trig_cfg); 
 
-  flower8_set_trigger_mask(device, config.trigger_mask); 
+  flower8_set_coinc_trigger_mask(device, config.coinc_trigger_mask); 
+  flower8_set_phased_trigger_mask(device, config.phased_trigger_mask_lower, config.phased_trigger_mask_upper); 
+
   return 0; 
 }
 
