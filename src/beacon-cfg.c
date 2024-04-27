@@ -230,16 +230,15 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
     c->fixed_coinc_threshold[i] = tmp; 
   }
 
-   int i; 
   for (i = 0; i < BN_NUM_BEAMS; i++) 
   {
     char buf[128]; 
     int tmp; 
-    sprintf(buf, "control.phased_scaler_goal.ch%d",i); 
+    sprintf(buf, "control.phased_scaler_goal.bm%d",i); 
     config_lookup_float(&cfg, buf, &c->phased_scaler_goal[i]); 
-    sprintf(buf, "control.fixed_phased_threshold.ch%d",i); 
+    sprintf(buf, "control.fixed_phased_threshold.bm%d",i); 
     config_lookup_int(&cfg, buf, &tmp); 
-    c->fixed_threshold[i] = tmp; 
+    c->fixed_phased_threshold[i] = tmp; 
   }
 
   int tmp; 
@@ -262,9 +261,9 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
   config_lookup_float(&cfg,"control.k_i_p",&c->k_i_p); 
   config_lookup_float(&cfg,"control.k_d_p",&c->k_d_p); 
   config_lookup_int(&cfg,"control.min_coinc_threshold",&tmp);
-  c->min_threshold = tmp;
+  c->min_coinc_threshold = tmp;
   config_lookup_int(&cfg,"control.min_phased_threshold",&tmp);
-  c->min_threshold = tmp;
+  c->min_phased_threshold = tmp;
   config_lookup_int(&cfg,"control.max_threshold_increase",&tmp);   
   c->max_threshold_increase = tmp; 
   config_lookup_float(&cfg,"control.monitor_interval",&c->monitor_interval); 

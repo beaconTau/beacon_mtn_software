@@ -92,9 +92,9 @@ typedef struct monitor_buffer
 {
   beacon_status_t status; //status before
   float coinc_thresholds[BN_NUM_CHAN]; //thresholds when written 
-  flower8_coinc_servo_state_t servo; 
+  flower8_coinc_servo_state_t coinc_servo; 
   float phased_thresholds[BN_NUM_BEAMS]; //thresholds when written 
-  flower8_phased_servo_state_t servo; 
+  flower8_phased_servo_state_t phased_servo; 
 } monitor_buffer_t; 
 
 /**************Static vars *******************************/
@@ -272,12 +272,24 @@ static double get_next_sw_trig_interval()
 
 }
 
-static void servo_state_print(FILE *f , const flower8_servo_state_t * st) 
+static void coinc_servo_state_print(FILE *f , const flower8_coinc_servo_state_t * st) 
 {
- fprintf(f,"========================FLOWR8 SERVO STATE=============\n"); 
+ fprintf(f,"========================FLOWR8 COINC SERVO STATE=============\n"); 
  fprintf(f,"  ch  |  val |  lastval  | err  |  last_err |  sumerr\n"); 
  fprintf(f,"------------------------------------------------------\n"); 
  for (int i = 0; i < BN_NUM_CHAN; i++) 
+ {
+   fprintf(stderr,"  %d  |%0.3f | %0.3f  | %0.3f  | %0.3f  | %0.3f\n", 
+       i, st->value[i], st->last_value[i], st->error[i], st->last_error[i], st->sum_error[i]); 
+ }
+}
+
+static void phased_servo_state_print(FILE *f , const flower8_phased_servo_state_t * st) 
+{
+ fprintf(f,"========================FLOWR8 PHASED SERVO STATE=============\n"); 
+ fprintf(f,"  bm  |  val |  lastval  | err  |  last_err |  sumerr\n"); 
+ fprintf(f,"------------------------------------------------------\n"); 
+ for (int i = 0; i < BN_NUM_BEAMS; i++) 
  {
    fprintf(stderr,"  %d  |%0.3f | %0.3f  | %0.3f  | %0.3f  | %0.3f\n", 
        i, st->value[i], st->last_value[i], st->error[i], st->last_error[i], st->sum_error[i]); 
@@ -300,7 +312,7 @@ static void update_flower_coinc_servo_state(flower8_coinc_servo_state_t *st, con
     st->last_value[i] = st->value[i]; 
     st->value[i] = val; 
     st->last_error[i] = st->error[i]; 
-    st->error[i] = (val-config.channel_scaler_goal[i]); 
+    st->error[i] = (val-config.coinc_scaler_goal[i]); 
     st->sum_error[i] += st->error[i]; 
   } 
 }
@@ -321,7 +333,7 @@ static void update_flower_phased_servo_state(flower8_phased_servo_state_t *st, c
     st->last_value[i] = st->value[i]; 
     st->value[i] = val; 
     st->last_error[i] = st->error[i]; 
-    st->error[i] = (val-config.beam_scaler_goal[i]); 
+    st->error[i] = (val-config.phased_scaler_goal[i]); 
     st->sum_error[i] += st->error[i]; 
   } 
 }
@@ -387,7 +399,7 @@ void * monitor_thread(void *v)
 
         if (config.use_fixed_thresholds) 
         {
-          mb.channel_thresholds[ichan] = config.fixed_channel_threshold[ichan]; 
+          mb.coinc_thresholds[ichan] = config.fixed_coinc_threshold[ichan]; 
 
         }
         else
@@ -398,20 +410,20 @@ void * monitor_thread(void *v)
           //cap the threshold increase at each step 
           if (dthreshold > config.max_threshold_increase) dthreshold = config.max_threshold_increase;
 
-          mb.channel_thresholds[ichan]+= dthreshold;
+          mb.coinc_thresholds[ichan]+= dthreshold;
 
-          if(mb.channel_thresholds[ichan] < config.min_channel_threshold){
-            mb.channel_thresholds[ichan] = config.min_channel_threshold;
+          if(mb.coinc_thresholds[ichan] < config.min_coinc_threshold){
+            mb.coinc_thresholds[ichan] = config.min_coinc_threshold;
           }
 
         }
 
-        mb.status.channel_servo_thresholds[ichan] = mb.channel_thresholds[ichan]; 
-        mb.status.channel_trig_thresholds[ichan] = clamp(mb.channel_thresholds[ichan] / config.coinc_servo_scaler_frac,4,120); 
+        mb.status.channel_servo_thresholds[ichan] = mb.coinc_thresholds[ichan]; 
+        mb.status.channel_trig_thresholds[ichan] = clamp(mb.coinc_thresholds[ichan] / config.coinc_servo_scaler_frac,4,120); 
       }
 
       //apply the thresholds 
-      flower8_set_thresholds(device, mb.status.channel_trig_thresholds, mb.status.channel_servo_thresholds, 0xff); 
+      //flower8_set_thresholds(device, mb.status.channel_trig_thresholds, mb.status.channel_servo_thresholds, 0xff); 
       
       //copy over the current control status 
       if (!config.use_fixed_thresholds) memcpy(&mb.coinc_servo, &coinc_servo, sizeof(coinc_servo)); 
@@ -424,7 +436,7 @@ void * monitor_thread(void *v)
 
         if (config.use_fixed_thresholds) 
         {
-          mb.beam_thresholds[ibeam] = config.fixed_beam_threshold[ibeam]; 
+          mb.phased_thresholds[ibeam] = config.fixed_phased_threshold[ibeam]; 
 
         }
         else
@@ -435,7 +447,7 @@ void * monitor_thread(void *v)
           //cap the threshold increase at each step 
           //if (dthreshold > config.max_threshold_increase) dthreshold = config.max_threshold_increase;
 
-          mb.beam_thresholds[ibeam]+= dthreshold;
+          mb.phased_thresholds[ibeam]+= dthreshold;
 
           if(mb.phased_thresholds[ibeam] < config.min_phased_threshold){
             mb.phased_thresholds[ibeam] = config.min_phased_threshold;
@@ -443,8 +455,8 @@ void * monitor_thread(void *v)
 
         }
 
-        mb.status.beam_servo_thresholds[ibeam] = mb.beam_thresholds[ibeam]; 
-        mb.status.beam_trig_thresholds[ibeam] = clamp(mb.beam_thresholds[ibeam] / config.phased_servo_scaler_frac,100,4095); 
+        mb.status.beam_servo_thresholds[ibeam] = mb.phased_thresholds[ibeam]; 
+        mb.status.beam_trig_thresholds[ibeam] = clamp(mb.phased_thresholds[ibeam] / config.phased_servo_scaler_frac,100,4095); 
       }
 
       //apply the thresholds 
@@ -780,8 +792,8 @@ static int configure_device()
   flower8_set_pretrigger(device, (uint8_t) config.pretrigger & 0xf);
 
 
-  flower8_trigger_config_t trig_cfg = {.vpp_mode = config.vpp_mode, .window = config.coinc_window, .num_coinc = config.ncoinc}; 
-  flower8_configure_trigger(device, trig_cfg); 
+  flower8_coinc_trigger_config_t coinc_trig_cfg = {.vpp_mode = config.vpp_mode, .window = config.coinc_window, .num_coinc = config.ncoinc}; 
+  flower8_configure_coinc_trigger(device, coinc_trig_cfg); 
 
   flower8_set_coinc_trigger_mask(device, config.coinc_trigger_mask); 
   flower8_set_phased_trigger_mask(device, config.phased_trigger_mask_lower, config.phased_trigger_mask_upper); 
@@ -915,7 +927,9 @@ static int setup()
       // if successful and right size, set the thresholds. Though these might get overriden by fixed thresholds... 
       if (saved_status!=MAP_FAILED && file_size == sizeof(beacon_status_t))
       {
-        flower8_set_thresholds(device, saved_status->channel_trig_thresholds, saved_status->channel_servo_thresholds, 0xff); 
+        flower8_set_coinc_thresholds(device, saved_status->channel_trig_thresholds, saved_status->channel_servo_thresholds, 0xff); 
+        flower8_set_phased_thresholds(device, saved_status->beam_trig_thresholds, saved_status->beam_servo_thresholds); 
+
       }
     }
   }
