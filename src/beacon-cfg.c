@@ -159,8 +159,8 @@ void beacon_acq_config_init ( beacon_acq_cfg_t * c)
   c->weight1Hz = 0.5; 
   c->max_threshold_increase = 5; 
   c->coinc_trigger_mask = 0xf; 
-  c->phased_trigger_mask_lower = 0x1fffff; //21 beams here
-  c->phased_trigger_mask_lower = 0x1fffff; //other 21 here 
+  c->phased_trigger_mask_lower = 0xffffff; //24 beams here
+  c->phased_trigger_mask_upper = 0; //empty 
 
   c->buffer_capacity = 256; 
   c->monitor_interval = 1.0; 
