@@ -139,7 +139,7 @@ void beacon_acq_config_init ( beacon_acq_cfg_t * c)
   for ( i = 0; i < BN_NUM_CHAN; i++) c->fixed_coinc_threshold[i] =  i < 4 ?  15 : 40; 
 
   for ( i = 0; i < BN_NUM_BEAMS; i++) c->phased_scaler_goal[i] = 500; 
-  for ( i = 0; i < BN_NUM_BEAMS; i++) c->fixed_phased_threshold[i] =  i < 4 ?  15 : 40; 
+  for ( i = 0; i < BN_NUM_BEAMS; i++) c->fixed_phased_threshold[i] =  1000; 
 
   c->use_fixed_thresholds = 1;
   
@@ -441,10 +441,10 @@ int beacon_acq_config_write(const char * fi, const beacon_acq_cfg_t * c)
   fprintf(f,"   k_d_p = %g;\n\n", c->k_d_p);
 
   fprintf(f,"   // puts a floor on the coinc thresholds\n"); 
-  fprintf(f,"   min_threshold=%u;\n\n", c->min_coinc_threshold);
+  fprintf(f,"   min_coinc_threshold=%u;\n\n", c->min_coinc_threshold);
 
   fprintf(f,"   // puts a floor on the phased thresholds\n"); 
-  fprintf(f,"   min_threshold=%u;\n\n", c->min_phased_threshold);
+  fprintf(f,"   min_phased_threshold=%u;\n\n", c->min_phased_threshold);
 
   fprintf(f,"   // max threshold increase per step \n"); 
   fprintf(f,"   max_threshold_increase=%u;\n\n", c->max_threshold_increase); 
