@@ -409,12 +409,14 @@ void * monitor_thread(void *v)
           
           //cap the threshold increase at each step 
           if (dthreshold > config.max_threshold_increase) dthreshold = config.max_threshold_increase;
+          if (dthreshold < -config.max_threshold_increase) dthreshold = -config.max_threshold_increase;
 
           mb.coinc_thresholds[ichan]+= dthreshold;
 
           if(mb.coinc_thresholds[ichan] < config.min_coinc_threshold){
             mb.coinc_thresholds[ichan] = config.min_coinc_threshold;
           }
+          mb.coinc_thresholds[ichan] = clamp(mb.coinc_thresholds[ichan],4,120);
 
         }
 
@@ -445,13 +447,15 @@ void * monitor_thread(void *v)
           double dthreshold =   config.k_p_p * phased_servo.error[ibeam] + config.k_i_p * phased_servo.sum_error[ibeam] + config.k_i_p * (phased_servo.error[ibeam] - phased_servo.last_error[ibeam]);
           
           //cap the threshold increase at each step 
-          //if (dthreshold > config.max_threshold_increase) dthreshold = config.max_threshold_increase;
+          if (dthreshold > 50) dthreshold = 50;
+          if (dthreshold<-50) dthreshold=-50;
 
           mb.phased_thresholds[ibeam]+= dthreshold;
 
           if(mb.phased_thresholds[ibeam] < config.min_phased_threshold){
             mb.phased_thresholds[ibeam] = config.min_phased_threshold;
           }
+          mb.phased_thresholds[ibeam]=clamp(mb.phased_thresholds[ibeam],100,4095);
 
         }
 
