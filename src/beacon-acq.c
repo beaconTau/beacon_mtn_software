@@ -853,14 +853,27 @@ static int setup()
 
 
   //set gains 
-  for (int ibd = 0; ibd <2; ibd++) 
+  for (uint8_t ibd = 0; ibd <2; ibd++) 
   {
-    flower8_dev_t* bd = ibd == 0 ? M : S; 
+    flower8_dev_t* bd;
+    uint8_t swapped_ind = 0;
+    if(config.swap_boards == 0) 
+    {
+      bd = ibd == 0 ? M : S; 
+      swapped_ind = ibd;
+    }
+    else 
+    {
+      bd = ibd == 1 ? M : S; 
+      swapped_ind = ibd == 1 ? 0 : 1;
+    }
+
     if (!bd) continue; 
+
     uint32_t equalize_mask = 0; 
     for (int i = 0; i < BN_NUM_CHAN; i++)
     {
-      if (config.gain_codes[ibd][i] >= 0 && config.gain_codes[ibd][i] < FLOWER8_GAIN_TOO_HIGH)  
+      if (config.gain_codes[swapped_ind][i] >= 0 && config.gain_codes[swapped_ind][i] < FLOWER8_GAIN_TOO_HIGH)  
       {
         equalize_mask |= (1 << i); 
       }
@@ -868,17 +881,17 @@ static int setup()
 
     if (equalize_mask != 0xff) 
     {
-      flower8_equalize(bd, config.target_rms, &codes[ibd][0], equalize_mask | FLOWER8_EQUALIZE_VERBOSE); 
+      flower8_equalize(bd, config.target_rms, &codes[swapped_ind][0], equalize_mask | FLOWER8_EQUALIZE_VERBOSE); 
     }
 
     for (int i = 0; i < BN_NUM_CHAN; i++) 
     {
-      if (config.gain_codes[ibd][i] >= 0 && config.gain_codes[ibd][i] < FLOWER8_GAIN_TOO_HIGH)  
+      if (config.gain_codes[swapped_ind][i] >= 0 && config.gain_codes[swapped_ind][i] < FLOWER8_GAIN_TOO_HIGH)  
       {
-        codes[ibd][i] = config.gain_codes[ibd][i]; 
+        codes[swapped_ind][i] = config.gain_codes[swapped_ind][i]; 
       }
 
-      flower8_set_gains(bd, codes[ibd]); 
+      flower8_set_gains(bd, codes[swapped_ind]); 
     }
 
 

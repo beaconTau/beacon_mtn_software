@@ -138,13 +138,13 @@ void beacon_acq_config_init ( beacon_acq_cfg_t * c)
   for ( i = 0; i < BN_NUM_CHAN; i++) c->coinc_scaler_goal[i] = 500; 
   for ( i = 0; i < BN_NUM_CHAN; i++) c->fixed_coinc_threshold[i] =  i < 4 ?  15 : 40; 
 
-  for ( i = 0; i < BN_NUM_BEAMS; i++) c->phased_scaler_goal[i] = 500; 
+  for ( i = 0; i < BN_NUM_BEAMS; i++) c->phased_scaler_goal[i] = 200; 
   for ( i = 0; i < BN_NUM_BEAMS; i++) c->fixed_phased_threshold[i] =  1000; 
 
   c->use_fixed_thresholds = 1;
   
   c->coinc_servo_scaler_frac = 0.9; 
-  c->phased_servo_scaler_frac = 0.9; 
+  c->phased_servo_scaler_frac = 0.5; 
 
 
   //TODO tune this 
@@ -159,7 +159,7 @@ void beacon_acq_config_init ( beacon_acq_cfg_t * c)
   c->weight1Hz = 0.5; 
   c->max_threshold_increase = 5; 
   c->coinc_trigger_mask = 0xf; 
-  c->phased_trigger_mask_lower = 0xffffff; //24 beams here
+  c->phased_trigger_mask_lower = 0x0fffff; //20 beams here
   c->phased_trigger_mask_upper = 0; //empty 
 
   c->buffer_capacity = 256; 
@@ -266,6 +266,8 @@ int beacon_acq_config_read(const char * fi, beacon_acq_cfg_t * c)
   c->min_phased_threshold = tmp;
   config_lookup_int(&cfg,"control.max_threshold_increase",&tmp);   
   c->max_threshold_increase = tmp; 
+  config_lookup_float(&cfg,"control.phased_servo_scaler_frac",&c->phased_servo_scaler_frac);
+  config_lookup_float(&cfg,"control.coinc_servo_scaler_frac",&c->coinc_servo_scaler_frac);
   config_lookup_float(&cfg,"control.monitor_interval",&c->monitor_interval); 
   config_lookup_float(&cfg,"control.sw_trigger_interval",&c->sw_trigger_interval); 
   config_lookup_int(&cfg,"control.randomize_sw_trigger",&c->randomize_sw_trigger); 
@@ -408,7 +410,7 @@ int beacon_acq_config_write(const char * fi, const beacon_acq_cfg_t * c)
   fprintf(f,"    };\n\n"); 
 
   fprintf(f,"   //the beams allowed to participate in the trigger\n"); 
-  fprintf(f,"   phased_trigger_mask_lower = 0x%x;\n\n", c->phased_trigger_mask_lower);  
+  fprintf(f,"   phased_trigger_mask_lower = 0x%x;\n", c->phased_trigger_mask_lower);  
   fprintf(f,"   phased_trigger_mask_upper = 0x%x;\n\n", c->phased_trigger_mask_upper);  
 
 
@@ -418,9 +420,14 @@ int beacon_acq_config_write(const char * fi, const beacon_acq_cfg_t * c)
   fprintf(f,"   // 1Hz scaler weight \n"); 
   fprintf(f,"   scaler_weight_1Hz = %f;\n\n", c->weight1Hz); 
 
+  fprintf(f,"   // coinc trig/servo threshold fraction \n"); 
+  fprintf(f,"   coinc_servo_scaler_frac = %f;\n\n", c->coinc_servo_scaler_frac); 
+
+  fprintf(f,"   // phased trig/servo threshold fraction \n"); 
+  fprintf(f,"   phased_servo_scaler_frac = %f;\n\n", c->phased_servo_scaler_frac); 
+
   fprintf(f,"   // use 100 Hz scalers instead of 100 mHz scalers...\n"); 
   fprintf(f,"   use_100Hz_scalers = %d;\n\n", c->use_100Hz_scalers); 
-
 
   fprintf(f,"   // coinc pid loop proportional term\n"); 
   fprintf(f,"   k_p = %g;\n\n", c->k_p); 
