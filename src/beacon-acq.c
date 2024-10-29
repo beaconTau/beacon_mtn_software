@@ -241,7 +241,7 @@ void * acq_thread(void *v)
 
     while (!mem->nfilled && !die) 
     {
-      mem->nfilled = !beacon_wait_for_and_fill_event(device, &mem->header, &mem->event, 10); 
+      mem->nfilled = !beacon_wait_for_and_fill_event(device, &mem->header, &mem->event, 10,config.swap_boards); 
     }
     beacon_buf_commit(acq_buffer); // we filled it 
   }
